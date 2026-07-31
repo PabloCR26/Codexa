@@ -12,7 +12,7 @@ Marcar con `[x]` lo que se vaya completando.
 - [ ] **1.** Instalar Docker Desktop y Node 20+ en las tres máquinas.
 - [ ] **2.** Migrar el repositorio a **GitLab privado** y agregar a los 3 como miembros.
 - [ ] **3.** Levantar la infraestructura: `docker compose up -d` (PostgreSQL + Redis).
-- [ ] **4.** Copiar `.env.example` a `server/.env` y generar `SESSION_SECRET` y `TOKEN_ENCRYPTION_KEY`.
+- [ ] **4.** Copiar `.env.example` a `.env` y generar `SESSION_SECRET` y `TOKEN_ENCRYPTION_KEY`.
 - [ ] **5.** Completar `.env.example` con todas las variables que usará el proyecto.
 - [ ] **6.** Corregir el enum `Provider` en `schema.prisma`: agregar `TELEGRAM`
   (hoy solo tiene `GOOGLE` y `GITHUB`, pero las acciones usan Telegram y falla en silencio).
@@ -21,11 +21,11 @@ Marcar con `[x]` lo que se vaya completando.
 - [ ] **8.** Correr la migración: `npx prisma migrate dev --name init` y commitearla.
 - [ ] **9.** Registrar en `api/index.js` los routers que faltan, aunque estén vacíos:
   `/api/oauth`, `/api/connections`, `/api/executions`, `/api/2fa`.
-- [ ] **10.** Definir en `web/src/api.js` todas las llamadas HTTP y dejar el router del
-  frontend con todas las páginas apuntando a componentes vacíos.
+- [ ] **10.** En el repositorio `flowhub-web`, definir `src/api.js` con todas las llamadas
+  HTTP y dejar el router con todas las páginas apuntando a componentes vacíos.
 - [ ] **11.** Acordar la firma exacta de los adaptadores:
   `async ({ params, connection, context }) => resultado`.
-- [ ] **12.** Verificar que arranquen los tres procesos: `dev:api`, `dev:worker` y `web`.
+- [ ] **12.** Verificar la integración de los tres repositorios: API, worker y frontend.
 
 ## Fase 2 — Autenticación y espacio privado
 
@@ -41,7 +41,7 @@ Marcar con `[x]` lo que se vaya completando.
 
 ## Fase 3 — Conexiones OAuth
 
-- [ ] **21.** Registrar la OAuth App en **GitHub**; guardar Client ID/Secret en `server/.env`.
+- [ ] **21.** Registrar la OAuth App en **GitHub**; guardar Client ID/Secret en `.env`.
 - [ ] **22.** `GET /api/oauth/github/start`: generar `state` anti-CSRF, guardarlo en sesión
   y redirigir con los scopes mínimos.
 - [ ] **23.** `GET /api/oauth/github/callback`: validar `state`, intercambiar el código
@@ -142,6 +142,7 @@ Marcar con `[x]` lo que se vaya completando.
 - Una rama por tarea, nombrada con su número: `feat/23-oauth-github-callback`.
 - Cada integrante commitea con **su propia cuenta**: la rúbrica evalúa aportes individuales.
 - Hacer `pull` antes de empezar cada tarea.
-- Avisar al grupo antes de tocar archivos que usan todos: `schema.prisma`,
-  `api/index.js`, `web/src/api.js` y `.env.example`.
+- Avisar al grupo antes de tocar archivos compartidos o contratos entre repositorios:
+  `prisma/schema.prisma`, `src/api/index.js`, el cliente HTTP del frontend, el payload
+  de la cola `executions` y `.env.example`.
 - **Ningún secreto en Git.** Solo se versiona `.env.example`.
