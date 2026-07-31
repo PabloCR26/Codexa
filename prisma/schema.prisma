@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Provider {
+  GOOGLE
+  GITHUB
+  TELEGRAM
+}
+
+enum TriggerType {
+  GITHUB_WEBHOOK
+  GMAIL_POLL
+  CRON
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  passwordHash  String
+  totpSecret    String?
+  totpEnabled   Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  connections   Connection[]
+  automations   Automation[]
+  executions    Execution[]
+}
+
+model Connection {
+  id                    String   @id @default(cuid())
+  provider              Provider
+  accessTokenEncrypted  String?
+  refreshTokenEncrypted String?
+  expiresAt             DateTime?
+  metadata              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+model Automation {
+  id           String         @id @default(cuid())
+  name         String
+  enabled      Boolean        @default(true)
+  triggerType  TriggerType
+  triggerConfig Json
+  conditions   Json?
+  actions      Json
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions   Execution[]
+  triggerState TriggerState?
+
+  @@index([userId])
+  @@index([enabled, triggerType])
+}
+
+model TriggerState {
+  id           String     @id @default(cuid())
+  cursor       String?
+  state        Json?
+  lastPolledAt DateTime?
+  updatedAt    DateTime   @updatedAt
+  automationId String     @unique
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+}
+
+model Execution {
+  id             String          @id @default(cuid())
+  status         ExecutionStatus @default(PENDING)
+  eventId        String?
+  triggerData    Json
+  output         Json?
+  error          Json?
+  attempt        Int             @default(0)
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  automationId   String
+  automation     Automation      @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([automationId, eventId])
+  @@index([userId, createdAt])
+  @@index([automationId])
+  @@index([status])
+}
