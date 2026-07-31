@@ -100,7 +100,7 @@ Las rutas reservadas responden `501 NOT_IMPLEMENTED` hasta que el equipo impleme
 ### Requisitos
 
 - Node.js 20 LTS o superior y npm.
-- Docker Desktop con el motor iniciado.
+- Docker Desktop con contenedores Linux y el motor iniciado.
 - Git.
 
 Comprobar las versiones:
@@ -110,7 +110,12 @@ node --version
 npm --version
 docker --version
 docker compose version
+docker info
 ```
+
+`docker info` debe mostrar las secciones `Client` y `Server`. En Windows, si el comando
+indica que no encuentra `dockerDesktopLinuxEngine`, iniciar Docker Desktop desde el menú
+Inicio o ejecutar `docker desktop start`, esperar y volver a probar.
 
 ### 1. Clonar el backend
 
@@ -154,14 +159,20 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
 Copiar esos resultados en `TOKEN_ENCRYPTION_KEY` y `SESSION_SECRET` dentro de `.env`.
 Las credenciales OAuth pueden permanecer vacías hasta desarrollar las integraciones.
 
+La configuración local usa el puerto `5433` para PostgreSQL, evitando conflictos con una
+instalación nativa que use el puerto convencional `5432`. Dentro del contenedor PostgreSQL
+continúa escuchando en `5432`; no hay que cambiar esa parte.
+
 ### 4. Levantar PostgreSQL y Redis
 
 ```bash
 docker compose up -d --wait
 docker compose ps
+docker compose port postgres 5432
 ```
 
-Ambos servicios deben aparecer como `healthy`.
+Ambos servicios deben aparecer como `healthy`. El último comando debe mostrar que PostgreSQL
+está publicado en el puerto `5433`, por ejemplo `0.0.0.0:5433`.
 
 ### 5. Aplicar la base de datos
 
@@ -169,6 +180,10 @@ Ambos servicios deben aparecer como `healthy`.
 npm run prisma:deploy
 npm run prisma:generate
 ```
+
+`prisma:deploy` debe indicar que aplicó la migración inicial o que no hay migraciones
+pendientes. `prisma:generate` puede mostrar un aviso sobre una nueva versión mayor de Prisma;
+no es necesario actualizarla para instalar el proyecto.
 
 ### 6. Ejecutar la API
 
@@ -213,8 +228,8 @@ frontend debe coincidir con `WEB_URL` en el `.env` de este backend; por defecto 
 El worker debe configurar las mismas conexiones:
 
 ```env
-DATABASE_URL=postgresql://flowhub:flowhub@localhost:5432/flowhub?schema=public
-REDIS_URL=redis://localhost:6379
+DATABASE_URL=postgresql://flowhub:flowhub@127.0.0.1:5433/flowhub?schema=public
+REDIS_URL=redis://127.0.0.1:6379
 ```
 
 Debe consumir la cola `executions`. Este backend solo publica trabajos; no inicia ni incorpora
@@ -227,6 +242,8 @@ el consumidor.
 | `PORT` | No | Puerto HTTP, por defecto `4000` |
 | `WEB_URL` | No | Origen permitido por CORS |
 | `PUBLIC_URL` | Más adelante | URL pública para callbacks y webhooks |
+| `POSTGRES_PORT` | No | Puerto de PostgreSQL en el host, por defecto `5433` |
+| `REDIS_PORT` | No | Puerto de Redis en el host, por defecto `6379` |
 | `DATABASE_URL` | Sí | Conexión PostgreSQL |
 | `REDIS_URL` | Sí | Redis compartido con el worker |
 | `SESSION_SECRET` | Sí | Firma de la sesión |
@@ -279,11 +296,27 @@ PUBLIC_URL/api/webhooks/github/<automationId>
 
 ## Solución de problemas
 
-- Si Prisma no alcanza PostgreSQL, esperar a que `docker compose ps` muestre `healthy`.
+- Si `docker` existe pero no conecta con `dockerDesktopLinuxEngine`, iniciar Docker Desktop
+  con `docker desktop start` y esperar a que `docker info` muestre la sección `Server`.
+- Si Prisma no alcanza PostgreSQL, confirmar que `docker compose ps` muestre `healthy` y
+  revisar el puerto real con `docker compose port postgres 5432`.
+- Si Prisma muestra `P1000`, comprobar que `DATABASE_URL` coincida con usuario, contraseña
+  y puerto de `.env`. También ejecutar `unset DATABASE_URL` en Git Bash para eliminar una
+  variable antigua que pueda tener prioridad sobre el archivo.
+- Si Prisma muestra `P1001`, el puerto de `DATABASE_URL` no coincide con el publicado por
+  Docker Compose.
 - Si la API indica variables faltantes, confirmar que `.env` existe en la raíz.
 - Si el frontend recibe un error CORS, revisar que su origen coincida exactamente con `WEB_URL`.
 - Si el worker no recibe trabajos, comparar `REDIS_URL` y el nombre de cola en ambos repositorios.
-- Si un puerto está ocupado, detener el proceso existente o cambiar el puerto y actualizar las URLs.
+- Si el puerto `5433` está ocupado, cambiar `POSTGRES_PORT` y el puerto de `DATABASE_URL`
+  al mismo valor. No modificar el puerto interno `5432` del contenedor.
+
+Comprobar las credenciales dentro del contenedor:
+
+```bash
+docker exec -e PGPASSWORD=flowhub flowhub-postgres \
+  psql -h 127.0.0.1 -U flowhub -d flowhub -c "SELECT 1;"
+```
 
 Para detener la infraestructura sin borrar datos:
 
