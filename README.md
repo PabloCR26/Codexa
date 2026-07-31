@@ -1,152 +1,257 @@
-# FlowHub — Proyecto 02
+# FlowHub API — Proyecto 02
 
 **Aplicaciones Web Utilizando Software Libre (ISW-811)**
 
-- **Estudiantes:** Edgar Eliam Araya Alvarado · Jose Pablo Chavez Madriz
+- **Estudiantes:** Edgar Eliam Araya Alvarado · Jose Pablo Chavez Madriz · Robert
 - **Docente:** Misael Matamoros Soto
 - **Fecha:** 24/07/2026
 
-Plataforma de automatización personal: el usuario conecta sus servicios y define reglas
-"cuando ocurra X, haz Y", que se ejecutan de forma asíncrona mediante un broker de mensajería.
+Backend de FlowHub, una plataforma de automatización personal donde el usuario define reglas
+del tipo “cuando ocurra X, haz Y”.
+
+Este repositorio contiene **únicamente la API productora**. El frontend y el worker se
+desarrollan y despliegan desde repositorios independientes.
+
+## Repositorios de la solución
+
+| Repositorio | Responsabilidad | Tecnología |
+|---|---|---|
+| `flowhub-api` (este repositorio) | API REST, autenticación, OAuth, webhooks, CRUD y publicación de trabajos | Express + Prisma + BullMQ |
+| `flowhub-web` | Interfaz SPA que consume la API | React + Vite |
+| `flowhub-worker` | Consume trabajos y ejecuta acciones de proveedores | Node.js + BullMQ |
+
+Los nombres `flowhub-web` y `flowhub-worker` son sugeridos; deben sustituirse por las URLs
+reales cuando se creen esos repositorios.
 
 ## Arquitectura
 
-Principio clave: **la aplicación web no ejecuta las acciones dentro de la petición HTTP.**
-Publica un trabajo en el broker y responde de inmediato; un **worker independiente** consume
-la cola y ejecuta la cadena de acciones.
+Principio central: **la API no ejecuta acciones externas dentro de una petición HTTP**.
+Valida la solicitud, persiste el estado necesario, publica un trabajo en Redis y responde.
+El worker independiente consume posteriormente ese trabajo.
 
+```text
+flowhub-web
+    │ REST + cookie de sesión
+    ▼
+flowhub-api (este repo) ◄── webhooks GitHub / configuración del usuario
+    │ publica trabajos
+    ▼
+Redis + BullMQ
+    │ consume trabajos
+    ▼
+flowhub-worker ──► Gmail / GitHub / Telegram
+    │
+    ▼
+PostgreSQL ◄──── flowhub-api
 ```
-SPA (React)
-   │  REST + cookie de sesión
-   ▼
-API · Express (Productor)      ◄── Disparadores: webhook GitHub · polling Gmail · cron
-   │  publica job
-   ▼
-Redis + BullMQ (Broker)        colas: executions · dead-letter (DLQ)
-   │  consume
-   ▼
-Worker · proceso Node aparte   ──► Acciones: Gmail · GitHub · Telegram (patrón adaptador)
-   │  persiste estado
-   ▼
-PostgreSQL + Prisma            usuarios · tokens cifrados (AES-256-GCM) · automatizaciones · bitácora
-```
 
-### Flujo de una automatización
+### Contratos entre repositorios
 
-1. Se dispara el evento (webhook de GitHub, o job programado por cron / polling de Gmail).
-2. La API valida, arma el payload del disparador, lo publica en Redis y responde sin ejecutar nada más.
-3. El worker consume el trabajo, evalúa las condiciones y resuelve el mapeo de datos `{{trigger.campo}}`.
-4. Ejecuta la cadena de acciones, una a la vez, vía adaptadores por proveedor, respetando límites de tasa.
-5. Registra entrada, salida y errores en la bitácora; ante fallo reintenta con backoff y, si se agota, deriva a la DLQ.
+- **Frontend → API:** HTTP JSON bajo `/api`, con cookies y `credentials: "include"`.
+- **API → worker:** cola BullMQ `executions` en la instancia definida por `REDIS_URL`.
+- **API ↔ base de datos:** PostgreSQL mediante Prisma.
+- **Worker ↔ base de datos:** el worker debe usar el mismo modelo de datos y `DATABASE_URL`.
+- **Adaptadores del worker:** firma acordada
+  `async ({ params, connection, context }) => resultado`.
 
-## Stack
+Los tres repositorios deben acordar y versionar el formato del payload de la cola antes de
+implementar las acciones. Un cambio incompatible debe coordinarse entre API y worker.
 
-| Capa | Tecnología |
-|---|---|
-| Frontend | React + Vite (SPA) |
-| API | Express 4 (Node 20+) — productor |
-| Broker | Redis + BullMQ |
-| Worker | Proceso Node independiente — consumidor |
-| Base de datos | PostgreSQL 16 + Prisma |
-| Auth | express-session + bcryptjs (cookie httpOnly) · 2FA opcional (otplib) |
-| OAuth | Authorization Code Flow con patrón adaptador · tokens cifrados |
-| Dev | cloudflared / ngrok (túnel para webhooks) |
+## Alcance actual
 
-**Proveedores:** OAuth delegado con **Google** y **GitHub**; **Telegram** como canal de acción adicional.
+Esta base deja preparado:
 
-## Estructura del proyecto
+- Express con seguridad básica, CORS, sesiones y manejo central de errores.
+- Endpoint de salud `GET /api/health`.
+- Routers reservados para `auth`, `automations`, `webhooks`, `oauth`, `connections`,
+  `executions` y `2fa`.
+- Publicador BullMQ para la cola `executions`, con reintentos y backoff predeterminados.
+- PostgreSQL 16 y Redis 7 para desarrollo con Docker Compose.
+- Esquema y migración inicial de Prisma.
+- Proveedores `GOOGLE`, `GITHUB` y `TELEGRAM`.
+- Modelo `TriggerState` para conservar el cursor del polling de Gmail.
 
-```
+Las rutas reservadas responden `501 NOT_IMPLEMENTED` hasta que el equipo implemente cada fase.
+
+## Estructura del repositorio
+
+```text
 .
-├── docker-compose.yml        # PostgreSQL + Redis
-├── .env.example              # Plantilla de variables de entorno (copiar a server/.env)
-├── server/                   # Backend (API productor + worker consumidor)
-│   ├── prisma/schema.prisma  # Modelo de datos
-│   └── src/
-│       ├── api/              # Express: rutas auth, automations, webhooks
-│       ├── worker/           # Consumidor BullMQ
-│       └── shared/           # prisma, redis, queue, crypto, template, engine, adapters/
-└── web/                      # Frontend React + Vite (SPA)
+├── docker-compose.yml
+├── .env.example
+├── package.json
+├── package-lock.json
+├── prisma/
+│   ├── schema.prisma
+│   └── migrations/
+└── src/
+    ├── api/
+    │   ├── index.js
+    │   └── routes/
+    ├── shared/
+    │   ├── prisma.js
+    │   ├── queue.js
+    │   └── redis.js
+    └── config.js
 ```
 
-## Instalación (zona de trabajo)
+## Instalación local
 
-### Requisitos previos
+### Requisitos
 
-- **Node.js 20+** y **npm** — https://nodejs.org
-- **Docker Desktop** (para PostgreSQL y Redis) — https://www.docker.com/products/docker-desktop/
-  - *Alternativa sin Docker:* instalar PostgreSQL 16 y Redis nativos y ajustar `DATABASE_URL` / `REDIS_URL`.
-- **Git** — https://git-scm.com
+- Node.js 20 LTS o superior y npm.
+- Docker Desktop con el motor iniciado.
+- Git.
 
-### Pasos
-
-**1. Clonar el repositorio**
+Comprobar las versiones:
 
 ```bash
-git clone <url-del-repo>
-cd ISW811-Codexa-Proyecto02
+node --version
+npm --version
+docker --version
+docker compose version
 ```
 
-**2. Levantar la infraestructura (PostgreSQL + Redis)**
+### 1. Clonar el backend
 
 ```bash
-docker compose up -d
+git clone <url-del-repositorio-backend>
+cd Codexa
 ```
 
-**3. Configurar las variables de entorno**
+### 2. Instalar dependencias
+
+El lockfile está versionado para que todos usen las mismas versiones:
 
 ```bash
-cp .env.example server/.env
+npm ci
 ```
 
-Editar `server/.env` y completar los valores. Generar las llaves con:
+### 3. Configurar el entorno
+
+macOS/Linux:
 
 ```bash
-# TOKEN_ENCRYPTION_KEY (64 caracteres hex = 32 bytes)
+cp .env.example .env
+```
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Generar los secretos:
+
+```bash
+# 64 caracteres hexadecimales
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
-# SESSION_SECRET (cadena aleatoria larga)
+# secreto largo para las sesiones
 node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
 ```
 
-Los `CLIENT_ID` / `CLIENT_SECRET` de Google y GitHub se obtienen registrando la app en cada proveedor
-(ver sección siguiente).
+Copiar esos resultados en `TOKEN_ENCRYPTION_KEY` y `SESSION_SECRET` dentro de `.env`.
+Las credenciales OAuth pueden permanecer vacías hasta desarrollar las integraciones.
 
-**4. Instalar dependencias y preparar la base de datos**
-
-```bash
-# Backend
-cd server
-npm install
-npx prisma migrate dev --name init   # crea las tablas
-cd ..
-
-# Frontend
-cd web
-npm install
-cd ..
-```
-
-## Ejecución
-
-Se necesitan **tres procesos**, cada uno en su propia terminal:
+### 4. Levantar PostgreSQL y Redis
 
 ```bash
-# Terminal 1 — API (productor)
-cd server && npm run dev:api        # http://localhost:4000
-
-# Terminal 2 — Worker (consumidor)
-cd server && npm run dev:worker
-
-# Terminal 3 — Frontend (SPA)
-cd web && npm run dev               # http://localhost:5173
+docker compose up -d --wait
+docker compose ps
 ```
 
-Abrir http://localhost:5173: debe mostrar **"✅ API conectada"**.
+Ambos servicios deben aparecer como `healthy`.
 
-### Webhooks en desarrollo (túnel)
+### 5. Aplicar la base de datos
 
-Para recibir los webhooks de GitHub, exponer el puerto 4000 con un túnel y copiar la URL pública en `PUBLIC_URL`:
+```bash
+npm run prisma:deploy
+npm run prisma:generate
+```
+
+### 6. Ejecutar la API
+
+```bash
+npm run dev
+```
+
+La API queda disponible en http://localhost:4000. Verificar:
+
+```bash
+curl http://localhost:4000/api/health
+```
+
+Respuesta esperada:
+
+```json
+{"status":"ok","service":"flowhub-api"}
+```
+
+En PowerShell también se puede usar:
+
+```powershell
+Invoke-RestMethod http://localhost:4000/api/health
+```
+
+## Conexión desde los otros repositorios
+
+### Frontend
+
+El frontend local debe usar:
+
+```env
+VITE_API_URL=http://localhost:4000/api
+```
+
+Las peticiones que dependan de la sesión deben incluir credenciales. La URL donde corre el
+frontend debe coincidir con `WEB_URL` en el `.env` de este backend; por defecto es
+`http://localhost:5173`.
+
+### Worker
+
+El worker debe configurar las mismas conexiones:
+
+```env
+DATABASE_URL=postgresql://flowhub:flowhub@localhost:5432/flowhub?schema=public
+REDIS_URL=redis://localhost:6379
+```
+
+Debe consumir la cola `executions`. Este backend solo publica trabajos; no inicia ni incorpora
+el consumidor.
+
+## Variables de entorno
+
+| Variable | Obligatoria para arrancar | Uso |
+|---|---:|---|
+| `PORT` | No | Puerto HTTP, por defecto `4000` |
+| `WEB_URL` | No | Origen permitido por CORS |
+| `PUBLIC_URL` | Más adelante | URL pública para callbacks y webhooks |
+| `DATABASE_URL` | Sí | Conexión PostgreSQL |
+| `REDIS_URL` | Sí | Redis compartido con el worker |
+| `SESSION_SECRET` | Sí | Firma de la sesión |
+| `TOKEN_ENCRYPTION_KEY` | Para OAuth | Cifrado AES-256 de tokens |
+| `GOOGLE_*` | Para OAuth Google | Credenciales y callback |
+| `GITHUB_*` | Para OAuth/webhooks | Credenciales, callback y firma |
+| `TELEGRAM_BOT_TOKEN` | En el worker | Ejecución de acciones Telegram |
+
+Aunque la plantilla enumera `TELEGRAM_BOT_TOKEN` para documentar la solución, el token deberá
+configurarse en el repositorio del worker y no ser utilizado por esta API.
+
+## Scripts
+
+| Comando | Acción |
+|---|---|
+| `npm run dev` | API con recarga automática |
+| `npm start` | API sin recarga |
+| `npm run prisma:generate` | Generar Prisma Client |
+| `npm run prisma:migrate -- --name descripcion` | Crear una migración |
+| `npm run prisma:deploy` | Aplicar migraciones versionadas |
+| `npm run prisma:studio` | Explorar la base de datos |
+
+## Webhooks durante el desarrollo
+
+Exponer el puerto de la API y copiar la URL pública en `PUBLIC_URL`:
 
 ```bash
 ngrok http 4000
@@ -154,26 +259,44 @@ ngrok http 4000
 cloudflared tunnel --url http://localhost:4000
 ```
 
-## Registro de las apps ante los proveedores
+Callback Google:
 
-Cada proveedor entrega un **Client ID** y **Client Secret** que van en `server/.env` (nunca en Git).
+```text
+http://localhost:4000/api/oauth/google/callback
+```
 
-- **Google:** [Google Cloud Console](https://console.cloud.google.com/) → APIs y servicios → Credenciales → *OAuth client ID* (tipo *Web application*). Redirect URI: `http://localhost:4000/api/oauth/google/callback`. Habilitar la *Gmail API*.
-- **GitHub:** [Developer settings](https://github.com/settings/developers) → *OAuth Apps* → *New OAuth App*. Authorization callback URL: `http://localhost:4000/api/oauth/github/callback`. El webhook del repositorio apunta a `PUBLIC_URL/api/webhooks/github/<automationId>` con el `GITHUB_WEBHOOK_SECRET`.
-- **Telegram:** hablar con [@BotFather](https://t.me/BotFather) → `/newbot` para obtener el `TELEGRAM_BOT_TOKEN`.
+Callback GitHub:
 
-## Scripts útiles
+```text
+http://localhost:4000/api/oauth/github/callback
+```
 
-| Comando (en `server/`) | Acción |
-|---|---|
-| `npm run dev:api` | API con recarga automática |
-| `npm run dev:worker` | Worker con recarga automática |
-| `npm run prisma:studio` | Explorar la base de datos en el navegador |
-| `npm run prisma:migrate` | Crear/aplicar migraciones |
+Webhook GitHub:
 
-## Notas
+```text
+PUBLIC_URL/api/webhooks/github/<automationId>
+```
 
-- Los procesos `api` y `worker` se ejecutan y despliegan por separado; se comunican solo vía broker.
-- Secretos fuera del control de versiones (`.env` + `.env.example`).
-- Repositorio en GitLab privado, iniciado desde el primer día.
-- `web/`: react-router-dom fijado en 7.18.2 (última estable). Las alertas de `npm audit` restantes son del modo **RSC**, que no se usa en este SPA cliente.
+## Solución de problemas
+
+- Si Prisma no alcanza PostgreSQL, esperar a que `docker compose ps` muestre `healthy`.
+- Si la API indica variables faltantes, confirmar que `.env` existe en la raíz.
+- Si el frontend recibe un error CORS, revisar que su origen coincida exactamente con `WEB_URL`.
+- Si el worker no recibe trabajos, comparar `REDIS_URL` y el nombre de cola en ambos repositorios.
+- Si un puerto está ocupado, detener el proceso existente o cambiar el puerto y actualizar las URLs.
+
+Para detener la infraestructura sin borrar datos:
+
+```bash
+docker compose down
+```
+
+`docker compose down -v` elimina permanentemente los datos locales.
+
+## Reglas de colaboración
+
+- Ningún secreto se versiona; solo `.env.example`.
+- Las migraciones de Prisma se crean y versionan desde este repositorio.
+- Los cambios al payload de `executions` se coordinan con el equipo del worker.
+- Los cambios de endpoints se coordinan con el equipo del frontend.
+- Cada integrante trabaja en una rama por tarea y realiza commits con su propia cuenta.
