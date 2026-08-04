@@ -4,7 +4,11 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const session = require("express-session");
 const { env, validateEnvironment } = require("../config");
+const { connectionsRouter } = require("./routes/connections");
+const { executionsRouter } = require("./routes/executions");
+const { oauthRouter } = require("./routes/oauth");
 const { placeholderRouter } = require("./routes/placeholder");
+const { twoFactorRouter } = require("./routes/two-factor");
 
 validateEnvironment();
 
@@ -33,17 +37,14 @@ app.get("/api/health", (_request, response) => {
   response.json({ status: "ok", service: "flowhub-api" });
 });
 
-for (const resource of [
-  "auth",
-  "automations",
-  "webhooks",
-  "oauth",
-  "connections",
-  "executions",
-  "2fa",
-]) {
+for (const resource of ["auth", "automations", "webhooks"]) {
   app.use(`/api/${resource}`, placeholderRouter(resource));
 }
+
+app.use("/api/oauth", oauthRouter);
+app.use("/api/connections", connectionsRouter);
+app.use("/api/executions", executionsRouter);
+app.use("/api/2fa", twoFactorRouter);
 
 app.use((error, _request, response, _next) => {
   console.error(error);
