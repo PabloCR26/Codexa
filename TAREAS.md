@@ -19,7 +19,7 @@ Marcar con `[x]` lo que se vaya completando.
 - [x] **7.** Agregar al esquema un modelo `TriggerState` para el cursor del polling de Gmail
   (guardar el último correo procesado y no reprocesarlo).
 - [x] **8.** Correr la migración: `npx prisma migrate dev --name init` y commitearla.
-- [ ] **9.** Registrar en `api/index.js` los routers que faltan, aunque estén vacíos:
+- [x] **9.** Registrar en `api/index.js` los routers que faltan, aunque estén vacíos:
   `/api/oauth`, `/api/connections`, `/api/executions`, `/api/2fa`.
 - [ ] **10.** En el repositorio `flowhub-web`, definir `src/api.js` con todas las llamadas
   HTTP y dejar el router con todas las páginas apuntando a componentes vacíos.
