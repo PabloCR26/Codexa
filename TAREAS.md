@@ -11,14 +11,14 @@ Marcar con `[x]` lo que se vaya completando.
 
 - [ ] **1.** Instalar Docker Desktop y Node 20+ en las tres máquinas.
 - [ ] **2.** Migrar el repositorio a **GitLab privado** y agregar a los 3 como miembros.
-- [ ] **3.** Levantar la infraestructura: `docker compose up -d` (PostgreSQL + Redis).
-- [ ] **4.** Copiar `.env.example` a `.env` y generar `SESSION_SECRET` y `TOKEN_ENCRYPTION_KEY`.
-- [ ] **5.** Completar `.env.example` con todas las variables que usará el proyecto.
-- [ ] **6.** Corregir el enum `Provider` en `schema.prisma`: agregar `TELEGRAM`
+- [x] **3.** Levantar la infraestructura: `docker compose up -d` (PostgreSQL + Redis).
+- [x] **4.** Copiar `.env.example` a `.env` y generar `SESSION_SECRET` y `TOKEN_ENCRYPTION_KEY`.
+- [x] **5.** Completar `.env.example` con todas las variables que usará el proyecto.
+- [x] **6.** Corregir el enum `Provider` en `schema.prisma`: agregar `TELEGRAM`
   (hoy solo tiene `GOOGLE` y `GITHUB`, pero las acciones usan Telegram y falla en silencio).
-- [ ] **7.** Agregar al esquema un modelo `TriggerState` para el cursor del polling de Gmail
+- [x] **7.** Agregar al esquema un modelo `TriggerState` para el cursor del polling de Gmail
   (guardar el último correo procesado y no reprocesarlo).
-- [ ] **8.** Correr la migración: `npx prisma migrate dev --name init` y commitearla.
+- [x] **8.** Correr la migración: `npx prisma migrate dev --name init` y commitearla.
 - [ ] **9.** Registrar en `api/index.js` los routers que faltan, aunque estén vacíos:
   `/api/oauth`, `/api/connections`, `/api/executions`, `/api/2fa`.
 - [ ] **10.** En el repositorio `flowhub-web`, definir `src/api.js` con todas las llamadas
