@@ -1,36 +1,40 @@
-import { useQuery } from '@tanstack/react-query'
-import { api } from './api'
-import './App.css'
+import { Routes, Route } from 'react-router-dom'
+import Layout from './components/Layout'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Automations from './pages/Automations'
+import AutomationForm from './pages/AutomationForm'
+import Connections from './pages/Connections'
+import Executions from './pages/Executions'
+import ExecutionDetail from './pages/ExecutionDetail'
+import Profile from './pages/Profile'
+import NotFound from './pages/NotFound'
+import './Style/App.css'
 
-// Pantalla inicial: confirma que el frontend se comunica con la API.
-// Punto de partida para las páginas de las fases 2 a 9 de TAREAS.md.
+// Mapa de rutas de la aplicación. Las páginas son plantillas vacías que se
+// implementan en las fases 2 a 9 de TAREAS.md.
+//
+// Pendiente (tarea 17): envolver las rutas privadas en un componente de ruta
+// protegida que redirija a /login cuando no haya sesión.
 export default function App() {
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['health'],
-    queryFn: api.health,
-    retry: false,
-  })
-
   return (
-    <main className="app">
-      <h1>FlowHub</h1>
-      <p className="lede">Plataforma de automatización personal — Proyecto 02, ISW-811.</p>
+    <Routes>
+      {/* Rutas públicas: sin la navegación principal */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
-      <section className="panel">
-        <h2>Estado de la API</h2>
-        {isLoading && <p>Conectando…</p>}
-        {isError && (
-          <p className="error">
-            Sin conexión: {error.message}. Verificá que la API esté corriendo en el puerto 4000.
-          </p>
-        )}
-        {data?.status === 'ok' && <p className="ok">API conectada ({data.service})</p>}
-      </section>
+      {/* Rutas privadas: comparten la cabecera con navegación */}
+      <Route element={<Layout />}>
+        <Route path="/" element={<Automations />} />
+        <Route path="/automations/new" element={<AutomationForm />} />
+        <Route path="/automations/:id" element={<AutomationForm />} />
+        <Route path="/connections" element={<Connections />} />
+        <Route path="/executions" element={<Executions />} />
+        <Route path="/executions/:id" element={<ExecutionDetail />} />
+        <Route path="/profile" element={<Profile />} />
+      </Route>
 
-      <p className="next">
-        Próximas pantallas: registro e inicio de sesión, automatizaciones, conexiones OAuth
-        e historial de ejecuciones.
-      </p>
-    </main>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   )
 }

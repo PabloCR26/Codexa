@@ -51,6 +51,12 @@ export const api = {
   // Bitácora
   listExecutions: (query = '') => request(`/executions${query}`),
   getExecution: (id) => request(`/executions/${id}`),
+
+  // Segundo factor (TOTP)
+  setup2fa: () => request('/2fa/setup', { method: 'POST' }),
+  verify2fa: (code) => request('/2fa/verify', { method: 'POST', body: JSON.stringify({ code }) }),
+  disable2fa: (password) =>
+    request('/2fa/disable', { method: 'POST', body: JSON.stringify({ password }) }),
 };
 
 // El OAuth son redirecciones del navegador: un fetch no puede seguirlas.

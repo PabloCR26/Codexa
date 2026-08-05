@@ -9,19 +9,19 @@ Marcar con `[x]` lo que se vaya completando.
 
 ## Fase 1 — Preparar el entorno
 
-- [ ] **1.** Instalar Docker Desktop y Node 20+ en las tres máquinas.
-- [ ] **2.** Migrar el repositorio a **GitLab privado** y agregar a los 3 como miembros.
-- [ ] **3.** Levantar la infraestructura: `docker compose up -d` (PostgreSQL + Redis).
-- [ ] **4.** Copiar `.env.example` a `.env` y generar `SESSION_SECRET` y `TOKEN_ENCRYPTION_KEY`.
-- [ ] **5.** Completar `.env.example` con todas las variables que usará el proyecto.
-- [ ] **6.** Corregir el enum `Provider` en `schema.prisma`: agregar `TELEGRAM`
+- [X] **1.** Instalar Docker Desktop y Node 20+ en las tres máquinas.
+- [X] **2.** Migrar el repositorio a **GitLab privado** y agregar a los 3 como miembros.
+- [X] **3.** Levantar la infraestructura: `docker compose up -d` (PostgreSQL + Redis).
+- [X] **4.** Copiar `.env.example` a `.env` y generar `SESSION_SECRET` y `TOKEN_ENCRYPTION_KEY`.
+- [X] **5.** Completar `.env.example` con todas las variables que usará el proyecto.
+- [X] **6.** Corregir el enum `Provider` en `schema.prisma`: agregar `TELEGRAM`
   (hoy solo tiene `GOOGLE` y `GITHUB`, pero las acciones usan Telegram y falla en silencio).
-- [ ] **7.** Agregar al esquema un modelo `TriggerState` para el cursor del polling de Gmail
+- [X] **7.** Agregar al esquema un modelo `TriggerState` para el cursor del polling de Gmail
   (guardar el último correo procesado y no reprocesarlo).
-- [ ] **8.** Correr la migración: `npx prisma migrate dev --name init` y commitearla.
-- [ ] **9.** Registrar en `api/index.js` los routers que faltan, aunque estén vacíos:
+- [X] **8.** Correr la migración: `npx prisma migrate dev --name init` y commitearla.
+- [X] **9.** Registrar en `api/index.js` los routers que faltan, aunque estén vacíos:
   `/api/oauth`, `/api/connections`, `/api/executions`, `/api/2fa`.
-- [ ] **10.** En `web/src/api.js`, definir todas las llamadas HTTP y dejar el router
+- [X] **10.** En `web/src/api.js`, definir todas las llamadas HTTP y dejar el router
   con todas las páginas apuntando a componentes vacíos.
 - [ ] **11.** Acordar la firma exacta de los adaptadores:
   `async ({ params, connection, context }) => resultado`.
