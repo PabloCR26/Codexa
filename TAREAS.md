@@ -29,7 +29,7 @@ Marcar con `[x]` lo que se vaya completando.
 
 ## Fase 2 — Autenticación y espacio privado
 
-- [ ] **13.** Probar registro, login y logout con Postman o `curl`; corregir lo que falle.
+- [X] **13.** Probar registro, login y logout con Postman o `curl`; corregir lo que falle.
 - [ ] **14.** Revisar que **toda** consulta filtre por `userId`; probar con dos usuarios
   que ninguno vea los datos del otro.
 - [ ] **15.** UI de registro: formulario, validación y manejo de errores.

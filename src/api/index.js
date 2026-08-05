@@ -5,6 +5,7 @@ const morgan = require("morgan");
 const session = require("express-session");
 const { env, validateEnvironment } = require("../config");
 const { placeholderRouter } = require("./routes/placeholder");
+const { authRouter } = require("./routes/auth");
 
 validateEnvironment();
 
@@ -33,8 +34,10 @@ app.get("/api/health", (_request, response) => {
   response.json({ status: "ok", service: "flowhub-api" });
 });
 
+app.use("/api/auth", authRouter);
+
+// Módulos aún no implementados: responden 501 hasta que se desarrolle su fase.
 for (const resource of [
-  "auth",
   "automations",
   "webhooks",
   "oauth",
@@ -46,6 +49,12 @@ for (const resource of [
 }
 
 app.use((error, _request, response, _next) => {
+  // Los servicios lanzan errores con código y estado propios (por ejemplo,
+  // credenciales inválidas); el resto se trata como fallo interno.
+  if (error && error.status) {
+    return response.status(error.status).json({ error: error.code });
+  }
+
   console.error(error);
   response.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
 });

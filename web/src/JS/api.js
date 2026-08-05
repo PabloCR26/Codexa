@@ -30,8 +30,8 @@ export const api = {
   me: () => request('/auth/me'),
   login: (email, password) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  register: (email, password, name) =>
-    request('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name }) }),
+  register: (email, password) =>
+    request('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
 
   // Automatizaciones
