@@ -1,14 +1,21 @@
 {
-  "name": "flowhub-api",
+  "name": "flowhub",
   "version": "0.1.0",
   "private": true,
-  "description": "API productora de FlowHub",
+  "description": "FlowHub: API productora, worker consumidor y frontend web",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "dev": "node --watch src/api/index.js",
+    "dev:api": "node --watch src/api/index.js",
+    "dev:worker": "node --watch src/worker/index.js",
+    "dev:web": "npm --prefix web run dev",
     "start": "node src/api/index.js",
+    "start:api": "node src/api/index.js",
+    "start:worker": "node src/worker/index.js",
+    "web:install": "npm --prefix web install",
+    "web:build": "npm --prefix web run build",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",

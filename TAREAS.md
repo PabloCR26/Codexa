@@ -21,11 +21,11 @@ Marcar con `[x]` lo que se vaya completando.
 - [ ] **8.** Correr la migración: `npx prisma migrate dev --name init` y commitearla.
 - [ ] **9.** Registrar en `api/index.js` los routers que faltan, aunque estén vacíos:
   `/api/oauth`, `/api/connections`, `/api/executions`, `/api/2fa`.
-- [ ] **10.** En el repositorio `flowhub-web`, definir `src/api.js` con todas las llamadas
-  HTTP y dejar el router con todas las páginas apuntando a componentes vacíos.
+- [ ] **10.** En `web/src/api.js`, definir todas las llamadas HTTP y dejar el router
+  con todas las páginas apuntando a componentes vacíos.
 - [ ] **11.** Acordar la firma exacta de los adaptadores:
   `async ({ params, connection, context }) => resultado`.
-- [ ] **12.** Verificar la integración de los tres repositorios: API, worker y frontend.
+- [ ] **12.** Verificar que arranquen los tres procesos: `dev:api`, `dev:worker` y `dev:web`.
 
 ## Fase 2 — Autenticación y espacio privado
 

@@ -5,23 +5,24 @@
 FlowHub es una plataforma universitaria de automatización personal: el usuario conecta
 servicios y crea reglas “cuando ocurra X, haz Y”. La arquitectura es asíncrona.
 
-Este repositorio contiene solo `flowhub-api`, el backend productor. Antes de trabajar,
-lee `README.md`, `TAREAS.md` y `AGENTS.md`.
+Este repositorio contiene toda la solución. Antes de trabajar, lee `README.md`,
+`TAREAS.md` y `AGENTS.md`.
 
-La solución completa se divide en tres repositorios:
+Se organiza en tres componentes que comparten repositorio pero son procesos distintos:
 
-1. `flowhub-api`: este repositorio; Express, Prisma y publicación BullMQ.
-2. `flowhub-web`: SPA React/Vite.
-3. `flowhub-worker`: consumidor BullMQ y ejecución de acciones.
+1. `src/api/`: Express, Prisma y publicación BullMQ (productor).
+2. `src/worker/`: consumidor BullMQ y ejecución de acciones.
+3. `web/`: SPA React/Vite.
 
 ## Regla arquitectónica principal
 
 La API nunca ejecuta Gmail, GitHub o Telegram durante una petición HTTP. Debe validar,
-persistir, publicar en la cola `executions` y responder. El worker independiente consume
-el trabajo y ejecuta las acciones.
+persistir, publicar en la cola `executions` y responder. El worker, como proceso separado,
+consume el trabajo y ejecuta las acciones.
 
-No agregues frontend, worker, polling, scheduler ni adaptadores de acciones en este repositorio.
-Cuando un cambio afecte otro repositorio, modifica o documenta el contrato compartido.
+Compartir repositorio no significa mezclar procesos: la API y el worker deben poder
+arrancarse y desplegarse por separado, y comunicarse solo a través de Redis. No importes
+código de `src/worker/` desde `src/api/` ni al revés; lo común vive en `src/shared/`.
 
 ## Tecnologías
 
@@ -37,11 +38,14 @@ Cuando un cambio afecte otro repositorio, modifica o documenta el contrato compa
 src/config.js                 carga y valida el entorno
 src/api/index.js              composición y arranque de Express
 src/api/routes/               routers HTTP
+src/worker/index.js           consumidor BullMQ y derivación a la DLQ
+src/worker/engine.js          motor de ejecución de automatizaciones
 src/shared/prisma.js          PrismaClient compartido
 src/shared/redis.js           fábrica de conexión Redis
-src/shared/queue.js           productor de la cola executions
+src/shared/queue.js           colas executions y executions-dlq
 prisma/schema.prisma          modelo de datos
 prisma/migrations/            historial inmutable de migraciones
+web/                          SPA React/Vite con su propio package.json
 ```
 
 Mantén los handlers pequeños. Separa rutas, middleware, validadores, servicios y repositorios
@@ -116,4 +120,4 @@ El proyecto aún no tiene suite automatizada. No indiques que las pruebas pasan 
 - No hagas commits ni pushes salvo petición explícita.
 - Explica decisiones que afecten contratos, seguridad o datos.
 - Actualiza README y `.env.example` cuando cambie la instalación.
-- Señala claramente los cambios que también necesita `flowhub-web` o `flowhub-worker`.
+- Señala claramente cuando un cambio afecte también a `src/worker/` o a `web/`.

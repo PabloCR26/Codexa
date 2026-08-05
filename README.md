@@ -1,4 +1,4 @@
-# FlowHub API — Proyecto 02
+# FlowHub — Proyecto 02
 
 **Aplicaciones Web Utilizando Software Libre (ISW-811)**
 
@@ -6,56 +6,53 @@
 - **Docente:** Misael Matamoros Soto
 - **Fecha:** 24/07/2026
 
-Backend de FlowHub, una plataforma de automatización personal donde el usuario define reglas
+FlowHub es una plataforma de automatización personal donde el usuario define reglas
 del tipo “cuando ocurra X, haz Y”.
 
-Este repositorio contiene **únicamente la API productora**. El frontend y el worker se
-desarrollan y despliegan desde repositorios independientes.
+Este repositorio contiene **toda la solución**: la API productora, el worker consumidor
+y el frontend web. Aunque comparten repositorio, la API y el worker son **procesos
+independientes**, con su propio comando y su propio contenedor.
 
-## Repositorios de la solución
+## Componentes
 
-| Repositorio | Responsabilidad | Tecnología |
-|---|---|---|
-| `flowhub-api` (este repositorio) | API REST, autenticación, OAuth, webhooks, CRUD y publicación de trabajos | Express + Prisma + BullMQ |
-| `flowhub-web` | Interfaz SPA que consume la API | React + Vite |
-| `flowhub-worker` | Consume trabajos y ejecuta acciones de proveedores | Node.js + BullMQ |
-
-Los nombres `flowhub-web` y `flowhub-worker` son sugeridos; deben sustituirse por las URLs
-reales cuando se creen esos repositorios.
+| Componente | Carpeta | Responsabilidad | Tecnología |
+|---|---|---|---|
+| API (productor) | `src/api/` | Autenticación, OAuth, webhooks, CRUD y publicación de trabajos | Express + Prisma + BullMQ |
+| Worker (consumidor) | `src/worker/` | Consume la cola y ejecuta las acciones de los proveedores | Node.js + BullMQ |
+| Frontend | `web/` | Interfaz SPA que consume la API | React + Vite |
+| Código compartido | `src/shared/` | Cliente Prisma, conexión Redis y definición de colas | — |
 
 ## Arquitectura
 
 Principio central: **la API no ejecuta acciones externas dentro de una petición HTTP**.
 Valida la solicitud, persiste el estado necesario, publica un trabajo en Redis y responde.
-El worker independiente consume posteriormente ese trabajo.
+El worker, como proceso separado, consume ese trabajo después.
 
 ```text
-flowhub-web
+web/ (React)
     │ REST + cookie de sesión
     ▼
-flowhub-api (este repo) ◄── webhooks GitHub / configuración del usuario
+src/api/ (productor) ◄── webhooks GitHub / configuración del usuario
     │ publica trabajos
     ▼
-Redis + BullMQ
+Redis + BullMQ ──► cola executions / executions-dlq
     │ consume trabajos
     ▼
-flowhub-worker ──► Gmail / GitHub / Telegram
+src/worker/ (consumidor) ──► Gmail / GitHub / Telegram
     │
     ▼
-PostgreSQL ◄──── flowhub-api
+PostgreSQL ◄──── src/api/
 ```
 
-### Contratos entre repositorios
+### Contratos internos
 
 - **Frontend → API:** HTTP JSON bajo `/api`, con cookies y `credentials: "include"`.
 - **API → worker:** cola BullMQ `executions` en la instancia definida por `REDIS_URL`.
-- **API ↔ base de datos:** PostgreSQL mediante Prisma.
-- **Worker ↔ base de datos:** el worker debe usar el mismo modelo de datos y `DATABASE_URL`.
+- **API y worker → base de datos:** PostgreSQL mediante Prisma, con el mismo esquema.
 - **Adaptadores del worker:** firma acordada
   `async ({ params, connection, context }) => resultado`.
 
-Los tres repositorios deben acordar y versionar el formato del payload de la cola antes de
-implementar las acciones. Un cambio incompatible debe coordinarse entre API y worker.
+Un cambio en el payload de la cola afecta a la API y al worker: debe documentarse aquí.
 
 ## Alcance actual
 
@@ -66,33 +63,43 @@ Esta base deja preparado:
 - Routers reservados para `auth`, `automations`, `webhooks`, `oauth`, `connections`,
   `executions` y `2fa`.
 - Publicador BullMQ para la cola `executions`, con reintentos y backoff predeterminados.
+- Worker consumidor con derivación a la cola de fallidos (`executions-dlq`).
+- Frontend React + Vite que verifica la conexión con la API.
 - PostgreSQL 16 y Redis 7 para desarrollo con Docker Compose.
 - Esquema y migración inicial de Prisma.
 - Proveedores `GOOGLE`, `GITHUB` y `TELEGRAM`.
 - Modelo `TriggerState` para conservar el cursor del polling de Gmail.
 
-Las rutas reservadas responden `501 NOT_IMPLEMENTED` hasta que el equipo implemente cada fase.
+Las rutas reservadas responden `501 NOT_IMPLEMENTED` y el motor de ejecución del worker
+lanza un error explícito hasta que el equipo implemente cada fase.
 
 ## Estructura del repositorio
 
 ```text
 .
-├── docker-compose.yml
+├── docker-compose.yml        # postgres y redis; perfil "app" para toda la solución
+├── Dockerfile                # imagen del backend: sirve para la API y el worker
 ├── .env.example
 ├── package.json
-├── package-lock.json
 ├── prisma/
 │   ├── schema.prisma
 │   └── migrations/
-└── src/
-    ├── api/
-    │   ├── index.js
-    │   └── routes/
-    ├── shared/
-    │   ├── prisma.js
-    │   ├── queue.js
-    │   └── redis.js
-    └── config.js
+├── src/
+│   ├── api/                  # productor
+│   │   ├── index.js
+│   │   └── routes/
+│   ├── worker/               # consumidor
+│   │   ├── index.js
+│   │   └── engine.js
+│   ├── shared/               # usado por la API y el worker
+│   │   ├── prisma.js
+│   │   ├── queue.js
+│   │   └── redis.js
+│   └── config.js
+└── web/                      # frontend React + Vite
+    ├── Dockerfile
+    ├── nginx.conf
+    └── src/
 ```
 
 ## Instalación local
@@ -117,10 +124,10 @@ docker info
 indica que no encuentra `dockerDesktopLinuxEngine`, iniciar Docker Desktop desde el menú
 Inicio o ejecutar `docker desktop start`, esperar y volver a probar.
 
-### 1. Clonar el backend
+### 1. Clonar el repositorio
 
 ```bash
-git clone <url-del-repositorio-backend>
+git clone <url-del-repositorio>
 cd Codexa
 ```
 
@@ -130,7 +137,11 @@ El lockfile está versionado para que todos usen las mismas versiones:
 
 ```bash
 npm ci
+npm run web:install
 ```
+
+El primer comando instala las dependencias del backend (API y worker); el segundo, las
+del frontend en `web/`.
 
 ### 3. Configurar el entorno
 
@@ -185,13 +196,26 @@ npm run prisma:generate
 pendientes. `prisma:generate` puede mostrar un aviso sobre una nueva versión mayor de Prisma;
 no es necesario actualizarla para instalar el proyecto.
 
-### 6. Ejecutar la API
+### 6. Ejecutar los tres procesos
+
+Cada uno en su propia terminal:
 
 ```bash
-npm run dev
+npm run dev:api
 ```
 
-La API queda disponible en http://localhost:4000. Verificar:
+```bash
+npm run dev:worker
+```
+
+```bash
+npm run dev:web
+```
+
+- API: http://localhost:4000
+- Frontend: http://localhost:5173
+
+Verificar la API:
 
 ```bash
 curl http://localhost:4000/api/health
@@ -209,58 +233,84 @@ En PowerShell también se puede usar:
 Invoke-RestMethod http://localhost:4000/api/health
 ```
 
-## Conexión desde los otros repositorios
+El frontend debe mostrar **“API conectada”**. El worker debe imprimir
+`Worker de FlowHub escuchando la cola executions`.
+
+## Ejecución completa en contenedores
+
+Además del modo de desarrollo, toda la solución puede levantarse en Docker mediante el
+perfil `app`:
+
+```bash
+docker compose --profile app up -d --build
+```
+
+Esto construye y arranca cinco contenedores: `postgres`, `redis`, `api`, `worker` y `web`
+(más `migrate`, que aplica las migraciones y termina). El frontend queda en
+http://localhost:8080 y nginx reenvía `/api` al contenedor de la API.
+
+La API y el worker se construyen desde la **misma imagen** pero corren en contenedores
+distintos con comandos distintos: son procesos independientes y desplegables por separado,
+como exige el enunciado.
+
+Para detener solo la aplicación y dejar la infraestructura:
+
+```bash
+docker compose --profile app down
+```
+
+## Notas de integración
 
 ### Frontend
 
-El frontend local debe usar:
+En desarrollo, `VITE_API_URL` se deja **vacío**: el proxy de Vite reenvía `/api` al backend,
+por lo que el navegador ve un solo origen y no hay problemas de CORS ni de cookies.
 
-```env
-VITE_API_URL=http://localhost:4000/api
-```
+El puerto del frontend está fijado con `strictPort: true` porque debe coincidir con `WEB_URL`
+del `.env` (por defecto `http://localhost:5173`). Si Vite cambiara de puerto en silencio,
+todas las peticiones fallarían por CORS.
 
-Las peticiones que dependan de la sesión deben incluir credenciales. La URL donde corre el
-frontend debe coincidir con `WEB_URL` en el `.env` de este backend; por defecto es
-`http://localhost:5173`.
+Las peticiones que dependan de la sesión deben incluir `credentials: "include"`.
 
 ### Worker
 
-El worker debe configurar las mismas conexiones:
+Comparte el `.env` de la raíz con la API, así que no requiere configuración adicional.
+Consume la cola `executions` y, cuando un trabajo agota sus reintentos, lo deriva a
+`executions-dlq`.
 
-```env
-DATABASE_URL=postgresql://flowhub:flowhub@127.0.0.1:5433/flowhub?schema=public
-REDIS_URL=redis://127.0.0.1:6379
-```
-
-Debe consumir la cola `executions`. Este backend solo publica trabajos; no inicia ni incorpora
-el consumidor.
+`TOKEN_ENCRYPTION_KEY` es la misma para ambos: la API cifra los tokens OAuth y el worker
+los descifra para llamar a los proveedores.
 
 ## Variables de entorno
 
 | Variable | Obligatoria para arrancar | Uso |
 |---|---:|---|
-| `PORT` | No | Puerto HTTP, por defecto `4000` |
+| `PORT` | No | Puerto HTTP de la API, por defecto `4000` |
 | `WEB_URL` | No | Origen permitido por CORS |
 | `PUBLIC_URL` | Más adelante | URL pública para callbacks y webhooks |
 | `POSTGRES_PORT` | No | Puerto de PostgreSQL en el host, por defecto `5433` |
 | `REDIS_PORT` | No | Puerto de Redis en el host, por defecto `6379` |
+| `WORKER_CONCURRENCY` | No | Trabajos simultáneos del worker, por defecto `5` |
 | `DATABASE_URL` | Sí | Conexión PostgreSQL |
-| `REDIS_URL` | Sí | Redis compartido con el worker |
+| `REDIS_URL` | Sí | Redis compartido entre API y worker |
 | `SESSION_SECRET` | Sí | Firma de la sesión |
 | `TOKEN_ENCRYPTION_KEY` | Para OAuth | Cifrado AES-256 de tokens |
 | `GOOGLE_*` | Para OAuth Google | Credenciales y callback |
 | `GITHUB_*` | Para OAuth/webhooks | Credenciales, callback y firma |
-| `TELEGRAM_BOT_TOKEN` | En el worker | Ejecución de acciones Telegram |
+| `TELEGRAM_BOT_TOKEN` | Para el worker | Ejecución de acciones Telegram |
 
-Aunque la plantilla enumera `TELEGRAM_BOT_TOKEN` para documentar la solución, el token deberá
-configurarse en el repositorio del worker y no ser utilizado por esta API.
+El frontend tiene su propia plantilla en `web/.env.example` con `VITE_API_URL`.
 
 ## Scripts
 
 | Comando | Acción |
 |---|---|
-| `npm run dev` | API con recarga automática |
-| `npm start` | API sin recarga |
+| `npm run dev:api` | API con recarga automática |
+| `npm run dev:worker` | Worker con recarga automática |
+| `npm run dev:web` | Frontend en modo desarrollo |
+| `npm run start:api` / `start:worker` | Ejecución sin recarga |
+| `npm run web:install` | Instalar dependencias del frontend |
+| `npm run web:build` | Compilar el frontend |
 | `npm run prisma:generate` | Generar Prisma Client |
 | `npm run prisma:migrate -- --name descripcion` | Crear una migración |
 | `npm run prisma:deploy` | Aplicar migraciones versionadas |
