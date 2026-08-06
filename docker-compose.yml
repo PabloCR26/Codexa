@@ -65,7 +65,9 @@ services:
       NODE_ENV: production
       PORT: 4000
       # El navegador entra por nginx (puerto 8080), que reenvia /api a este servicio.
-      WEB_URL: ${WEB_URL:-http://localhost:8080}
+      # WEB_URL queda reservado para Vite local (:5173). El perfil Docker
+      # necesita su propio origen para CORS y redirecciones OAuth (:8080).
+      WEB_URL: ${DOCKER_WEB_URL:-http://localhost:8080}
       PUBLIC_URL: ${PUBLIC_URL:-}
       # Dentro de la red de Docker el host es el nombre del servicio.
       DATABASE_URL: postgresql://flowhub:flowhub@postgres:5432/flowhub?schema=public
@@ -78,6 +80,7 @@ services:
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI:-}
+      GITHUB_OAUTH_SCOPES: ${GITHUB_OAUTH_SCOPES:-public_repo}
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
     ports:
       - "${API_PORT:-4000}:4000"
