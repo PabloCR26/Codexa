@@ -41,22 +41,22 @@ Marcar con `[x]` lo que se vaya completando.
 
 ## Fase 3 — Conexiones OAuth
 
-- [ ] **21.** Registrar la OAuth App en **GitHub**; guardar Client ID/Secret en `.env`.
-- [ ] **22.** `GET /api/oauth/github/start`: generar `state` anti-CSRF, guardarlo en sesión
+- [x] **21.** Registrar la OAuth App en **GitHub**; guardar Client ID/Secret en `.env`.
+- [x] **22.** `GET /api/oauth/github/start`: generar `state` anti-CSRF, guardarlo en sesión
   y redirigir con los scopes mínimos.
-- [ ] **23.** `GET /api/oauth/github/callback`: validar `state`, intercambiar el código
+- [x] **23.** `GET /api/oauth/github/callback`: validar `state`, intercambiar el código
   por el token y guardarlo **cifrado**.
-- [ ] **24.** Verificar en `npm run prisma:studio` que el token está ilegible en la base
+- [x] **24.** Verificar en `npm run prisma:studio` que el token está ilegible en la base
   (evidencia del cifrado en reposo).
-- [ ] **25.** Registrar la app en **Google Cloud Console**, habilitar la Gmail API y
+- [x] **25.** Registrar la app en **Google Cloud Console**, habilitar la Gmail API y
   configurar la pantalla de consentimiento y los scopes.
-- [ ] **26.** `GET /api/oauth/google/start` con `access_type=offline` para obtener refresh token.
-- [ ] **27.** `GET /api/oauth/google/callback`: guardar access + refresh cifrados y `expiresAt`.
-- [ ] **28.** Función de **refresco automático**: renovar el token vencido antes de usarlo
+- [x] **26.** `GET /api/oauth/google/start` con `access_type=offline` para obtener refresh token.
+- [x] **27.** `GET /api/oauth/google/callback`: guardar access + refresh cifrados y `expiresAt`.
+- [x] **28.** Función de **refresco automático**: renovar el token vencido antes de usarlo
   y guardar el nuevo.
-- [ ] **29.** `GET /api/connections`: listar las conexiones del usuario sin exponer tokens.
-- [ ] **30.** `DELETE /api/connections/:id`: revocar ante el proveedor y borrar de la base.
-- [ ] **31.** UI de conexiones: tarjeta por proveedor con estado, botón *Conectar* y *Revocar*.
+- [x] **29.** `GET /api/connections`: listar las conexiones del usuario sin exponer tokens.
+- [x] **30.** `DELETE /api/connections/:id`: revocar ante el proveedor y borrar de la base.
+- [x] **31.** UI de conexiones: tarjeta por proveedor con estado, botón *Conectar* y *Revocar*.
 
 ## Fase 4 — Gestión de automatizaciones (CRUD)
 
