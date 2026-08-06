@@ -1,3 +1,4 @@
+const crypto = require("node:crypto");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -24,15 +25,56 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: env.nodeEnv === "production" ? "none" : "lax",
       secure: env.nodeEnv === "production",
       maxAge: 1000 * 60 * 60 * 24 * 7,
     },
   }),
 );
 
+function ensureCsrfToken(request, response, next) {
+  // Garantizar que la sesión existe; si no, pasar al siguiente middleware
+  // para que express-session la cree.
+  if (!request.session) {
+    return next();
+  }
+
+  // Generar el token CSRF para esta sesión si aún no existe.
+  if (!request.session.csrfToken) {
+    request.session.csrfToken = crypto.randomBytes(24).toString("hex");
+  }
+
+  // Las peticiones de lectura no necesitan validación de CSRF.
+  const isSafeMethod = ["GET", "HEAD", "OPTIONS"].includes(request.method);
+  if (isSafeMethod) {
+    return next();
+  }
+
+  // Validar que el token enviado coincida con el de la sesión.
+  const providedToken = request.get("x-csrf-token");
+  if (!providedToken || providedToken !== request.session.csrfToken) {
+    return response.status(403).json({ error: "CSRF_TOKEN_INVALID" });
+  }
+
+  return next();
+}
+
+app.use(ensureCsrfToken);
+
 app.get("/api/health", (_request, response) => {
   response.json({ status: "ok", service: "flowhub-api" });
+});
+
+app.get("/api/csrf-token", (request, response) => {
+  if (!request.session) {
+    return response.status(500).json({ error: "SESSION_NOT_AVAILABLE" });
+  }
+
+  if (!request.session.csrfToken) {
+    request.session.csrfToken = crypto.randomBytes(24).toString("hex");
+  }
+
+  response.json({ csrfToken: request.session.csrfToken });
 });
 
 app.use("/api/auth", authRouter);

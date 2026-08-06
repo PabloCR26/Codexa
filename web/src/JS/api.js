@@ -21,9 +21,30 @@ export class ApiError extends Error {
 }
 
 async function request(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const needsCsrf = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+
+  if (needsCsrf) {
+    try {
+      const tokenRes = await fetch(`${BASE}/csrf-token`, {
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (tokenRes.ok) {
+        const tokenBody = await tokenRes.json();
+        if (tokenBody.csrfToken) {
+          headers['X-CSRF-Token'] = tokenBody.csrfToken;
+        }
+      }
+    } catch (e) {
+      console.warn('No se pudo obtener el token CSRF', e);
+    }
+  }
+
   const response = await fetch(BASE + path, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers,
     ...options,
   });
 

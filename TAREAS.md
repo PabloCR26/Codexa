@@ -36,7 +36,7 @@ Marcar con `[x]` lo que se vaya completando.
 - [X] **16.** UI de login con redirección si ya existe sesión.
 - [X] **17.** Componente de ruta protegida: sin sesión, redirige a login.
 - [X] **18.** Layout con navegación: Automatizaciones · Conexiones · Historial · Salir.
-- [ ] **19.** Protección CSRF y revisión de las opciones de la cookie de sesión.
+- [X] **19.** Protección CSRF y revisión de las opciones de la cookie de sesión.
 - [ ] **20.** Limitar intentos de login (rate limiting) contra fuerza bruta.
 
 ## Fase 3 — Conexiones OAuth
