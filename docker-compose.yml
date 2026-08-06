@@ -1,3 +1,11 @@
+# Infraestructura (postgres, redis): siempre se levanta.
+#   docker compose up -d --wait
+#
+# Aplicacion completa en contenedores (api, worker, web): perfil "app".
+#   docker compose --profile app up -d --build
+#
+# La API y el worker son contenedores separados a partir de la misma imagen:
+# procesos independientes que solo se comunican por Redis.
 services:
   postgres:
     image: postgres:16-alpine
@@ -31,6 +39,96 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Servicio de un solo uso: aplica las migraciones antes de que arranque la API.
+  migrate:
+    profiles: ["app"]
+    build: .
+    image: flowhub-backend
+    container_name: flowhub-migrate
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://flowhub:flowhub@postgres:5432/flowhub?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    profiles: ["app"]
+    build: .
+    image: flowhub-backend
+    container_name: flowhub-api
+    restart: unless-stopped
+    command: ["node", "src/api/index.js"]
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      # El navegador entra por nginx (puerto 8080), que reenvia /api a este servicio.
+      WEB_URL: ${WEB_URL:-http://localhost:8080}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      # Dentro de la red de Docker el host es el nombre del servicio.
+      DATABASE_URL: postgresql://flowhub:flowhub@postgres:5432/flowhub?schema=public
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+    ports:
+      - "${API_PORT:-4000}:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    profiles: ["app"]
+    build: .
+    image: flowhub-backend
+    container_name: flowhub-worker
+    restart: unless-stopped
+    # Misma imagen que la API, distinto comando: proceso independiente.
+    command: ["node", "src/worker/index.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://flowhub:flowhub@postgres:5432/flowhub?schema=public
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET}
+      # Debe ser la misma llave que usa la API: la API cifra los tokens
+      # OAuth y el worker los descifra para llamar a los proveedores.
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-5}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    profiles: ["app"]
+    build:
+      context: ./web
+      args:
+        # Vacio a proposito: nginx reenvia /api a la API, asi el navegador
+        # ve un solo origen y no hay CORS ni problemas de cookies.
+        VITE_API_URL: ""
+    container_name: flowhub-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
 
 volumes:
   postgres_data:

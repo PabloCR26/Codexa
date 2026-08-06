@@ -21,23 +21,23 @@ Marcar con `[x]` lo que se vaya completando.
 - [x] **8.** Correr la migración: `npx prisma migrate dev --name init` y commitearla.
 - [x] **9.** Registrar en `api/index.js` los routers que faltan, aunque estén vacíos:
   `/api/oauth`, `/api/connections`, `/api/executions`, `/api/2fa`.
-- [ ] **10.** En el repositorio `flowhub-web`, definir `src/api.js` con todas las llamadas
-  HTTP y dejar el router con todas las páginas apuntando a componentes vacíos.
+- [x] **10.** En `web/src/JS/api.js`, definir todas las llamadas HTTP y dejar el router
+  con todas las páginas apuntando a componentes vacíos.
 - [ ] **11.** Acordar la firma exacta de los adaptadores:
   `async ({ params, connection, context }) => resultado`.
-- [ ] **12.** Verificar la integración de los tres repositorios: API, worker y frontend.
+- [ ] **12.** Verificar que arranquen los tres procesos: `dev:api`, `dev:worker` y `dev:web`.
 
 ## Fase 2 — Autenticación y espacio privado
 
-- [ ] **13.** Probar registro, login y logout con Postman o `curl`; corregir lo que falle.
-- [ ] **14.** Revisar que **toda** consulta filtre por `userId`; probar con dos usuarios
+- [x] **13.** Probar registro, login y logout con Postman o `curl`; corregir lo que falle.
+- [x] **14.** Revisar que **toda** consulta filtre por `userId`; probar con dos usuarios
   que ninguno vea los datos del otro.
-- [ ] **15.** UI de registro: formulario, validación y manejo de errores.
-- [ ] **16.** UI de login con redirección si ya existe sesión.
-- [ ] **17.** Componente de ruta protegida: sin sesión, redirige a login.
-- [ ] **18.** Layout con navegación: Automatizaciones · Conexiones · Historial · Salir.
-- [ ] **19.** Protección CSRF y revisión de las opciones de la cookie de sesión.
-- [ ] **20.** Limitar intentos de login (rate limiting) contra fuerza bruta.
+- [x] **15.** UI de registro: formulario, validación y manejo de errores.
+- [x] **16.** UI de login con redirección si ya existe sesión.
+- [x] **17.** Componente de ruta protegida: sin sesión, redirige a login.
+- [x] **18.** Layout con navegación: Automatizaciones · Conexiones · Historial · Salir.
+- [x] **19.** Protección CSRF y revisión de las opciones de la cookie de sesión.
+- [x] **20.** Limitar intentos de login (rate limiting) contra fuerza bruta.
 
 ## Fase 3 — Conexiones OAuth
 
@@ -59,6 +59,10 @@ Marcar con `[x]` lo que se vaya completando.
 - [ ] **31.** UI de conexiones: tarjeta por proveedor con estado, botón *Conectar* y *Revocar*.
 
 ## Fase 4 — Gestión de automatizaciones (CRUD)
+
+> Los endpoints de la API (`GET`, `POST`, `PUT`, `PATCH /toggle`, `DELETE`) ya están
+> implementados y filtrados por `userId`; se hicieron junto con la tarea 14.
+> Las tareas de esta fase son la interfaz que los consume.
 
 - [ ] **32.** UI de lista con botones de activar/desactivar y eliminar.
 - [ ] **33.** Formulario de creación: nombre, tipo de disparador y su configuración.

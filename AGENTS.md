@@ -2,36 +2,41 @@
 
 ## Propósito
 
-Este repositorio contiene exclusivamente `flowhub-api`, la API productora de FlowHub.
+Este repositorio contiene toda la solución de FlowHub: API, worker y frontend.
 Es un proyecto universitario desarrollado por un equipo; los cambios deben ser claros,
 pequeños y fáciles de explicar durante la defensa.
 
 Lee `README.md` y `TAREAS.md` antes de modificar el proyecto.
 
-## Límites del repositorio
+## Límites entre componentes
 
-Este repositorio es responsable de:
+Compartir repositorio no significa mezclar responsabilidades. Cada carpeta tiene su rol:
+
+`src/api/` — la API productora:
 
 - API REST con Express.
 - Registro, autenticación, sesiones y 2FA.
 - CRUD de automatizaciones.
 - OAuth con Google y GitHub.
 - Recepción y validación de webhooks.
-- Persistencia mediante PostgreSQL y Prisma.
 - Publicación de trabajos en la cola BullMQ `executions`.
 - Consulta de conexiones y bitácora de ejecuciones.
 
-Este repositorio no contiene:
+`src/api/` **nunca** debe:
 
-- La SPA React. Pertenece a `flowhub-web`.
-- El consumidor BullMQ. Pertenece a `flowhub-worker`.
-- La ejecución de acciones Gmail, GitHub o Telegram.
-- Adaptadores de acciones de proveedores.
-- Polling de Gmail o ejecución del scheduler, salvo endpoints o configuración que
-  produzcan los trabajos correspondientes.
+- Ejecutar acciones de Gmail, GitHub o Telegram dentro de una petición HTTP.
+- Contener adaptadores de proveedores ni el motor de ejecución.
 
-No agregues carpetas `web/`, `frontend/` ni `src/worker/`. Si una tarea requiere cambios
-en otro repositorio, documenta el contrato necesario en lugar de implementar aquí ese código.
+`src/worker/` — el consumidor:
+
+- Toma los trabajos de la cola y ejecuta la cadena de acciones.
+- Idempotencia, reintentos, derivación a la DLQ.
+- Adaptadores de proveedores, polling y scheduler.
+
+`web/` — la SPA React/Vite. Tiene su propio `package.json`.
+
+`src/shared/` — lo único que pueden usar la API y el worker a la vez: Prisma, Redis y colas.
+No importes código de `src/worker/` desde `src/api/` ni al revés.
 
 ## Arquitectura obligatoria
 
@@ -98,7 +103,7 @@ npm run prisma:deploy
 
 ## Contrato de la cola
 
-La API publica en `executions`; no consume esa cola.
+La API publica en `executions` y nunca la consume; el worker la consume y nunca publica en ella.
 
 Antes de cambiar un payload:
 
@@ -106,7 +111,7 @@ Antes de cambiar un payload:
 - Incluye una versión explícita del contrato cuando empiece a evolucionar.
 - No incluyas tokens descifrados ni secretos.
 - Incluye un identificador estable del evento para idempotencia.
-- Coordina el cambio con `flowhub-worker`.
+- Actualiza a la vez el productor (`src/api/`) y el consumidor (`src/worker/`).
 
 Las opciones predeterminadas de reintento se encuentran en `src/shared/queue.js`.
 La API no debe decidir qué errores de una acción externa son permanentes o reintentables;
@@ -119,8 +124,8 @@ Todas las rutas públicas viven bajo `/api`.
 - Mantén `GET /api/health` sin autenticación.
 - Las sesiones usan cookie HTTP-only.
 - CORS debe admitir únicamente el origen configurado en `WEB_URL`.
-- Los cambios de endpoints o respuestas deben comunicarse a `flowhub-web`.
-- No agregues componentes React ni código de interfaz en este repositorio.
+- Los cambios de endpoints o respuestas obligan a actualizar `web/src/api.js`.
+- No agregues componentes React ni código de interfaz dentro de `src/`.
 
 ## Comandos de trabajo
 

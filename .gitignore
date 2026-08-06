@@ -1,5 +1,8 @@
 node_modules/
+web/node_modules/
+web/dist/
 .env
+web/.env
 *.log
 .DS_Store
 .idea/
@@ -7,3 +10,4 @@ node_modules/
 prisma/*.db
 prisma/*.db-journal
 coverage/
+cookies.txt

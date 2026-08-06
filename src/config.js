@@ -19,6 +19,9 @@ module.exports = {
     webUrl: process.env.WEB_URL || "http://localhost:5173",
     redisUrl: process.env.REDIS_URL,
     sessionSecret: process.env.SESSION_SECRET,
+    // Trabajos simultáneos del worker. Se mantiene bajo para respetar
+    // los límites de tasa de las APIs de los proveedores.
+    workerConcurrency: Number(process.env.WORKER_CONCURRENCY || 5),
   },
   validateEnvironment,
 };
