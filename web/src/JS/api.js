@@ -8,6 +8,18 @@
 // incrusta las variables VITE_* al compilar y no las lee en tiempo de ejecución.
 const BASE = `${import.meta.env.VITE_API_URL ?? ''}/api`;
 
+// Error de la API con el código y los detalles que devuelve el backend,
+// para que los formularios puedan señalar el campo exacto que falló.
+export class ApiError extends Error {
+  constructor({ status, code, details, message }) {
+    super(message || code || `Error ${status}`);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+    this.details = details || {};
+  }
+}
+
 async function request(path, options = {}) {
   const response = await fetch(BASE + path, {
     credentials: 'include',
@@ -16,8 +28,13 @@ async function request(path, options = {}) {
   });
 
   if (!response.ok) {
-    const detail = await response.json().catch(() => ({}));
-    throw new Error(detail.message || detail.error || `Error ${response.status}`);
+    const cuerpo = await response.json().catch(() => ({}));
+    throw new ApiError({
+      status: response.status,
+      code: cuerpo.error,
+      details: cuerpo.details,
+      message: cuerpo.message,
+    });
   }
 
   return response.status === 204 ? null : response.json();

@@ -32,7 +32,7 @@ Marcar con `[x]` lo que se vaya completando.
 - [X] **13.** Probar registro, login y logout con Postman o `curl`; corregir lo que falle.
 - [X] **14.** Revisar que **toda** consulta filtre por `userId`; probar con dos usuarios
   que ninguno vea los datos del otro.
-- [ ] **15.** UI de registro: formulario, validación y manejo de errores.
+- [X] **15.** UI de registro: formulario, validación y manejo de errores.
 - [ ] **16.** UI de login con redirección si ya existe sesión.
 - [ ] **17.** Componente de ruta protegida: sin sesión, redirige a login.
 - [ ] **18.** Layout con navegación: Automatizaciones · Conexiones · Historial · Salir.
