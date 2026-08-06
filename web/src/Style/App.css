@@ -41,15 +41,36 @@
   border-bottom-color: currentColor;
 }
 
-.estado {
+.sesion {
   margin-left: auto;
-  font-size: 0.8rem;
-  opacity: 0.7;
-  color: #b4443b;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.estado.ok {
-  color: #0f766e;
+.correo {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.salir {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid rgba(128, 128, 128, 0.5);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.salir:hover:not(:disabled) {
+  border-color: currentColor;
+}
+
+.salir:disabled {
+  opacity: 0.6;
+  cursor: progress;
 }
 
 .contenido {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../JS/api'
 import { useSession, SESSION_KEY } from '../JS/useSession'
@@ -21,10 +21,15 @@ function validar({ email, password }) {
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const { autenticado, verificando } = useSession()
   const [campos, setCampos] = useState({ email: '', password: '' })
   const [errores, setErrores] = useState({})
+
+  // RequireAuth guarda aquí la ruta que se intentó abrir sin sesión, para
+  // volver a ella una vez iniciada.
+  const destino = location.state?.from || '/'
 
   const acceso = useMutation({
     mutationFn: ({ email, password }) => api.login(email, password),
@@ -32,7 +37,7 @@ export default function Login() {
       // Se guarda la sesión en caché para que el resto de la aplicación la
       // conozca de inmediato, sin una petición adicional.
       queryClient.setQueryData(SESSION_KEY, usuario)
-      navigate('/', { replace: true })
+      navigate(destino, { replace: true })
     },
   })
 
@@ -40,9 +45,10 @@ export default function Login() {
   // que aparezca un instante y desaparezca al redirigir.
   if (verificando) return <main className="auth"><p>Verificando sesión…</p></main>
 
-  // Si ya hay sesión, esta página no tiene sentido. replace evita que el
-  // botón Atrás devuelva al formulario.
-  if (autenticado) return <Navigate to="/" replace />
+  // Si ya hay sesión, esta página no tiene sentido. Debe usarse `destino` y no
+  // una ruta fija: al iniciar sesión esta condición se cumple de inmediato y,
+  // con "/" fijo, se perdería la página que la persona quería abrir.
+  if (autenticado) return <Navigate to={destino} replace />
 
   function actualizar(campo, valor) {
     setCampos((previos) => ({ ...previos, [campo]: valor }))
