@@ -21,6 +21,18 @@ module.exports = {
     sessionCookieSecure: new URL(webUrl).protocol === "https:",
     redisUrl: process.env.REDIS_URL,
     sessionSecret: process.env.SESSION_SECRET,
+    tokenEncryptionKey: process.env.TOKEN_ENCRYPTION_KEY,
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      redirectUri: process.env.GITHUB_REDIRECT_URI,
+      scopes: process.env.GITHUB_OAUTH_SCOPES || "public_repo",
+    },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri: process.env.GOOGLE_REDIRECT_URI,
+    },
     // Trabajos simultáneos del worker. Se mantiene bajo para respetar
     // los límites de tasa de las APIs de los proveedores.
     workerConcurrency: Number(process.env.WORKER_CONCURRENCY || 5),
