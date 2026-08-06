@@ -16,6 +16,7 @@
     "start:worker": "node src/worker/index.js",
     "web:install": "npm --prefix web install",
     "web:build": "npm --prefix web run build",
+    "test": "node --test",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",

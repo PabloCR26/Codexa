@@ -317,6 +317,7 @@ El frontend tiene su propia plantilla en `web/.env.example` con `VITE_API_URL`.
 | `npm run start:api` / `start:worker` | Ejecución sin recarga |
 | `npm run web:install` | Instalar dependencias del frontend |
 | `npm run web:build` | Compilar el frontend |
+| `npm test` | Ejecutar las pruebas automatizadas con Node.js Test Runner |
 | `npm run prisma:generate` | Generar Prisma Client |
 | `npm run prisma:migrate -- --name descripcion` | Crear una migración |
 | `npm run prisma:deploy` | Aplicar migraciones versionadas |
@@ -363,6 +364,9 @@ PUBLIC_URL/api/webhooks/github/<automationId>
   Docker Compose.
 - Si la API indica variables faltantes, confirmar que `.env` existe en la raíz.
 - Si el frontend recibe un error CORS, revisar que su origen coincida exactamente con `WEB_URL`.
+- Si registro o login devuelve `CSRF_TOKEN_INVALID`, comprobar que `WEB_URL` use el mismo
+  protocolo y host con el que se abre el frontend. En local debe ser `http://localhost:8080`;
+  al desplegar con HTTPS debe comenzar con `https://`.
 - Si el worker no recibe trabajos, comparar `REDIS_URL` y el nombre de cola en ambos repositorios.
 - Si el puerto `5433` está ocupado, cambiar `POSTGRES_PORT` y el puerto de `DATABASE_URL`
   al mismo valor. No modificar el puerto interno `5432` del contenedor.

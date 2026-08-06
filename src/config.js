@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const required = ["DATABASE_URL", "REDIS_URL", "SESSION_SECRET"];
+const webUrl = process.env.WEB_URL || "http://localhost:5173";
 
 function validateEnvironment() {
   const missing = required.filter((name) => !process.env[name]);
@@ -16,7 +17,8 @@ module.exports = {
   env: {
     nodeEnv: process.env.NODE_ENV || "development",
     port: Number(process.env.PORT || 4000),
-    webUrl: process.env.WEB_URL || "http://localhost:5173",
+    webUrl,
+    sessionCookieSecure: new URL(webUrl).protocol === "https:",
     redisUrl: process.env.REDIS_URL,
     sessionSecret: process.env.SESSION_SECRET,
     // Trabajos simultáneos del worker. Se mantiene bajo para respetar

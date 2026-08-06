@@ -22,45 +22,62 @@ class AuthError extends Error {
   }
 }
 
-async function register({ email, password }) {
-  const existente = await prisma.user.findUnique({ where: { email } });
-  if (existente) {
-    throw new AuthError("EMAIL_ALREADY_REGISTERED", 409);
+function createAuthService({ prismaClient = prisma, passwordLibrary = bcrypt } = {}) {
+  async function register({ email, password }) {
+    const existente = await prismaClient.user.findUnique({ where: { email } });
+    if (existente) {
+      throw new AuthError("EMAIL_ALREADY_REGISTERED", 409);
+    }
+
+    const passwordHash = await passwordLibrary.hash(password, SALT_ROUNDS);
+
+    try {
+      return await prismaClient.user.create({
+        data: { email, passwordHash },
+        select: PUBLIC_FIELDS,
+      });
+    } catch (error) {
+      // Dos solicitudes simultáneas pueden superar el findUnique. La restricción
+      // única de PostgreSQL sigue siendo la autoridad y debe producir el mismo 409.
+      if (error?.code === "P2002") {
+        throw new AuthError("EMAIL_ALREADY_REGISTERED", 409);
+      }
+      throw error;
+    }
   }
 
-  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+  async function login({ email, password }) {
+    const user = await prismaClient.user.findUnique({ where: { email } });
 
-  return prisma.user.create({
-    data: { email, passwordHash },
-    select: PUBLIC_FIELDS,
-  });
-}
+    // Se compara aunque el usuario no exista para que el tiempo de respuesta
+    // sea parecido en ambos casos y no revele qué correos están registrados.
+    const hash = user
+      ? user.passwordHash
+      : "$2a$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidin";
+    const coincide = await passwordLibrary.compare(password, hash);
 
-async function login({ email, password }) {
-  const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !coincide) {
+      throw new AuthError("INVALID_CREDENTIALS", 401);
+    }
 
-  // Se compara aunque el usuario no exista para que el tiempo de respuesta
-  // sea parecido en ambos casos y no revele qué correos están registrados.
-  const hash = user ? user.passwordHash : "$2a$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidin";
-  const coincide = await bcrypt.compare(password, hash);
+    // TODO (tarea 64): si user.totpEnabled, exigir el código OTP antes
+    // de considerar el inicio de sesión completo.
 
-  if (!user || !coincide) {
-    throw new AuthError("INVALID_CREDENTIALS", 401);
+    return {
+      id: user.id,
+      email: user.email,
+      totpEnabled: user.totpEnabled,
+      createdAt: user.createdAt,
+    };
   }
 
-  // TODO (tarea 64): si user.totpEnabled, exigir el código OTP antes
-  // de considerar el inicio de sesión completo.
+  function findById(id) {
+    return prismaClient.user.findUnique({ where: { id }, select: PUBLIC_FIELDS });
+  }
 
-  return {
-    id: user.id,
-    email: user.email,
-    totpEnabled: user.totpEnabled,
-    createdAt: user.createdAt,
-  };
+  return { register, login, findById };
 }
 
-function findById(id) {
-  return prisma.user.findUnique({ where: { id }, select: PUBLIC_FIELDS });
-}
+const authService = createAuthService();
 
-module.exports = { register, login, findById, AuthError };
+module.exports = { ...authService, createAuthService, AuthError };

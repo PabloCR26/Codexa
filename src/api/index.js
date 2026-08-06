@@ -41,8 +41,11 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: env.nodeEnv === "production" ? "none" : "lax",
-      secure: env.nodeEnv === "production",
+      // La seguridad de la cookie depende del protocolo público, no de NODE_ENV.
+      // El perfil Docker local es producción pero se abre por HTTP; una cookie
+      // Secure no se enviaría y rompería la sesión y la protección CSRF.
+      sameSite: env.sessionCookieSecure ? "none" : "lax",
+      secure: env.sessionCookieSecure,
       maxAge: 1000 * 60 * 60 * 24 * 7,
     },
   }),
