@@ -1,6 +1,7 @@
 const express = require("express");
 const { asyncHandler } = require("../middleware/asyncHandler");
 const { requireAuth } = require("../middleware/requireAuth");
+const { loginRateLimit } = require("../middleware/rateLimitLogin");
 const { registerSchema, loginSchema } = require("../validators/auth");
 const authService = require("../services/auth");
 
@@ -39,6 +40,7 @@ router.post(
 
 router.post(
   "/login",
+  loginRateLimit,
   asyncHandler(async (request, response) => {
     const parsed = loginSchema.safeParse(request.body);
     if (!parsed.success) {

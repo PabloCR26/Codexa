@@ -8,4 +8,8 @@ function createRedisConnection() {
   });
 }
 
-module.exports = { createRedisConnection };
+// Cliente Redis singleton compartido para toda la aplicación.
+// Se usa en colas, rate limiting y caché.
+const redisClient = createRedisConnection();
+
+module.exports = { createRedisConnection, redisClient };
