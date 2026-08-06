@@ -33,7 +33,7 @@ Marcar con `[x]` lo que se vaya completando.
 - [X] **14.** Revisar que **toda** consulta filtre por `userId`; probar con dos usuarios
   que ninguno vea los datos del otro.
 - [X] **15.** UI de registro: formulario, validación y manejo de errores.
-- [ ] **16.** UI de login con redirección si ya existe sesión.
+- [X] **16.** UI de login con redirección si ya existe sesión.
 - [ ] **17.** Componente de ruta protegida: sin sesión, redirige a login.
 - [ ] **18.** Layout con navegación: Automatizaciones · Conexiones · Historial · Salir.
 - [ ] **19.** Protección CSRF y revisión de las opciones de la cookie de sesión.
