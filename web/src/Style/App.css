@@ -100,6 +100,32 @@
   opacity: 0.7;
 }
 
+.notice {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid;
+  border-radius: 6px;
+}
+
+.notice.success { color: #0f766e; }
+.notice.error { color: #b4443b; }
+.notice button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 1.2rem; }
+
+.connection-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; }
+.connection-card { padding: 1.25rem; border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 8px; }
+.connection-heading { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.connection-heading h3 { margin: 0; }
+.connection-card > p { min-height: 3rem; line-height: 1.5; opacity: 0.75; }
+.connection-card .connection-account { min-height: auto; font-size: 0.85rem; overflow-wrap: anywhere; }
+.connection-status { padding: 0.2rem 0.5rem; border-radius: 999px; background: rgba(128, 128, 128, 0.2); font-size: 0.75rem; white-space: nowrap; }
+.connection-status.connected { color: #0f766e; background: rgba(15, 118, 110, 0.12); }
+.connection-card > button { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #0f766e; border-radius: 6px; background: #0f766e; color: white; font: inherit; font-weight: 600; cursor: pointer; }
+.connection-card > button:disabled { opacity: 0.6; cursor: progress; }
+.connection-card > .danger-button { border-color: #b4443b; background: transparent; color: #b4443b; }
+
 /* --- Páginas de registro e inicio de sesión --- */
 
 .auth {
