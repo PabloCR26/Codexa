@@ -6,6 +6,7 @@ const session = require("express-session");
 const { env, validateEnvironment } = require("../config");
 const { placeholderRouter } = require("./routes/placeholder");
 const { authRouter } = require("./routes/auth");
+const { automationsRouter } = require("./routes/automations");
 
 validateEnvironment();
 
@@ -35,10 +36,10 @@ app.get("/api/health", (_request, response) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/automations", automationsRouter);
 
 // Módulos aún no implementados: responden 501 hasta que se desarrolle su fase.
 for (const resource of [
-  "automations",
   "webhooks",
   "oauth",
   "connections",

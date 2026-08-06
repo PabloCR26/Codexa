@@ -30,7 +30,7 @@ Marcar con `[x]` lo que se vaya completando.
 ## Fase 2 — Autenticación y espacio privado
 
 - [X] **13.** Probar registro, login y logout con Postman o `curl`; corregir lo que falle.
-- [ ] **14.** Revisar que **toda** consulta filtre por `userId`; probar con dos usuarios
+- [X] **14.** Revisar que **toda** consulta filtre por `userId`; probar con dos usuarios
   que ninguno vea los datos del otro.
 - [ ] **15.** UI de registro: formulario, validación y manejo de errores.
 - [ ] **16.** UI de login con redirección si ya existe sesión.
@@ -59,6 +59,10 @@ Marcar con `[x]` lo que se vaya completando.
 - [ ] **31.** UI de conexiones: tarjeta por proveedor con estado, botón *Conectar* y *Revocar*.
 
 ## Fase 4 — Gestión de automatizaciones (CRUD)
+
+> Los endpoints de la API (`GET`, `POST`, `PUT`, `PATCH /toggle`, `DELETE`) ya están
+> implementados y filtrados por `userId`; se hicieron junto con la tarea 14.
+> Las tareas de esta fase son la interfaz que los consume.
 
 - [ ] **32.** UI de lista con botones de activar/desactivar y eliminar.
 - [ ] **33.** Formulario de creación: nombre, tipo de disparador y su configuración.
