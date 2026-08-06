@@ -20,7 +20,7 @@ independientes**, con su propio comando y su propio contenedor.
 | API (productor) | `src/api/` | Autenticación, OAuth, webhooks, CRUD y publicación de trabajos | Express + Prisma + BullMQ |
 | Worker (consumidor) | `src/worker/` | Consume la cola y ejecuta las acciones de los proveedores | Node.js + BullMQ |
 | Frontend | `web/` | Interfaz SPA que consume la API | React + Vite |
-| Código compartido | `src/shared/` | Cliente Prisma, conexión Redis y definición de colas | — |
+| Código compartido | `src/shared/` | Prisma, Redis, colas y cifrado de tokens | — |
 
 ## Arquitectura
 
@@ -60,8 +60,8 @@ Esta base deja preparado:
 
 - Express con seguridad básica, CORS, sesiones y manejo central de errores.
 - Endpoint de salud `GET /api/health`.
-- Routers reservados para `auth`, `automations`, `webhooks`, `oauth`, `connections`,
-  `executions` y `2fa`.
+- Routers implementados para `auth`, `automations`, `oauth` y `connections`; rutas reservadas
+  para `webhooks`, `executions` y `2fa`.
 - Publicador BullMQ para la cola `executions`, con reintentos y backoff predeterminados.
 - Worker consumidor con derivación a la cola de fallidos (`executions-dlq`).
 - Frontend React + Vite que verifica la conexión con la API.
@@ -70,8 +70,8 @@ Esta base deja preparado:
 - Proveedores `GOOGLE`, `GITHUB` y `TELEGRAM`.
 - Modelo `TriggerState` para conservar el cursor del polling de Gmail.
 
-Las rutas reservadas responden `501 NOT_IMPLEMENTED` y el motor de ejecución del worker
-lanza un error explícito hasta que el equipo implemente cada fase.
+Las rutas que todavía están reservadas responden `501 NOT_IMPLEMENTED` y el motor de ejecución
+del worker lanza un error explícito hasta que el equipo implemente cada fase.
 
 ## Estructura del repositorio
 
@@ -169,7 +169,30 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
 ```
 
 Copiar esos resultados en `TOKEN_ENCRYPTION_KEY` y `SESSION_SECRET` dentro de `.env`.
-Las credenciales OAuth pueden permanecer vacías hasta desarrollar las integraciones.
+Las credenciales OAuth pueden permanecer vacías si todavía no se probarán las conexiones.
+
+### Configurar OAuth de GitHub
+
+1. En GitHub, abrir **Settings → Developer settings → OAuth Apps → New OAuth App**.
+2. Usar `http://localhost:5173` como *Homepage URL* y
+   `http://localhost:4000/api/oauth/github/callback` como *Authorization callback URL*.
+3. Copiar el Client ID y generar un Client Secret; guardarlos únicamente en `.env` como
+   `GITHUB_CLIENT_ID` y `GITHUB_CLIENT_SECRET`.
+4. Mantener `GITHUB_OAUTH_SCOPES=public_repo`, suficiente para crear issues en repositorios
+   públicos. Usar `repo` solo si la demostración necesita repositorios privados.
+
+### Configurar OAuth de Google
+
+1. Crear o elegir un proyecto en Google Cloud Console y habilitar **Gmail API**.
+2. Configurar la pantalla de consentimiento, agregar los integrantes como usuarios de prueba
+   y declarar el scope `https://www.googleapis.com/auth/gmail.modify`.
+3. Crear un cliente OAuth de tipo **Web application** con el redirect URI
+   `http://localhost:4000/api/oauth/google/callback`.
+4. Guardar el Client ID y Secret únicamente en `.env` como `GOOGLE_CLIENT_ID` y
+   `GOOGLE_CLIENT_SECRET`.
+
+Después de cambiar credenciales en el perfil Docker, reconstruir/recrear la API con
+`docker compose --profile app up -d --build`. En desarrollo local basta reiniciar `npm run dev`.
 
 La configuración local usa el puerto `5433` para PostgreSQL, evitando conflictos con una
 instalación nativa que use el puerto convencional `5432`. Dentro del contenedor PostgreSQL
@@ -293,6 +316,7 @@ los descifra para llamar a los proveedores.
 |---|---:|---|
 | `PORT` | No | Puerto HTTP de la API, por defecto `4000` |
 | `WEB_URL` | No | Origen permitido por CORS |
+| `DOCKER_WEB_URL` | No | Origen del frontend en Docker, por defecto `http://localhost:8080` |
 | `PUBLIC_URL` | Más adelante | URL pública para callbacks y webhooks |
 | `POSTGRES_PORT` | No | Puerto de PostgreSQL en el host, por defecto `5433` |
 | `REDIS_PORT` | No | Puerto de Redis en el host, por defecto `6379` |
@@ -303,6 +327,7 @@ los descifra para llamar a los proveedores.
 | `TOKEN_ENCRYPTION_KEY` | Para OAuth | Cifrado AES-256 de tokens |
 | `GOOGLE_*` | Para OAuth Google | Credenciales y callback |
 | `GITHUB_*` | Para OAuth/webhooks | Credenciales, callback y firma |
+| `GITHUB_OAUTH_SCOPES` | No | `public_repo` por defecto; usar `repo` solo para repositorios privados |
 | `TELEGRAM_BOT_TOKEN` | Para el worker | Ejecución de acciones Telegram |
 
 El frontend tiene su propia plantilla en `web/.env.example` con `VITE_API_URL`.
@@ -345,6 +370,12 @@ Callback GitHub:
 http://localhost:4000/api/oauth/github/callback
 ```
 
+La pantalla **Conexiones** inicia ambos flujos. Los callbacks validan `state` y PKCE antes de
+guardar access/refresh tokens cifrados con AES-256-GCM. Para evidenciar el cifrado en reposo,
+conectar una cuenta, ejecutar `npm run prisma:studio`, abrir `Connection` y comprobar que los
+campos terminan en un valor con formato `v1:...`, nunca en el token legible. No copiar esos
+valores a capturas, issues ni mensajes.
+
 Webhook GitHub:
 
 ```text
@@ -364,9 +395,9 @@ PUBLIC_URL/api/webhooks/github/<automationId>
   Docker Compose.
 - Si la API indica variables faltantes, confirmar que `.env` existe en la raíz.
 - Si el frontend recibe un error CORS, revisar que su origen coincida exactamente con `WEB_URL`.
-- Si registro o login devuelve `CSRF_TOKEN_INVALID`, comprobar que `WEB_URL` use el mismo
-  protocolo y host con el que se abre el frontend. En local debe ser `http://localhost:8080`;
-  al desplegar con HTTPS debe comenzar con `https://`.
+- Si registro o login devuelve `CSRF_TOKEN_INVALID`, comprobar que el origen configurado use
+  el mismo protocolo y host con el que se abre el frontend: `WEB_URL` para Vite y
+  `DOCKER_WEB_URL` para Docker. Al desplegar con HTTPS debe comenzar con `https://`.
 - Si el worker no recibe trabajos, comparar `REDIS_URL` y el nombre de cola en ambos repositorios.
 - Si el puerto `5433` está ocupado, cambiar `POSTGRES_PORT` y el puerto de `DATABASE_URL`
   al mismo valor. No modificar el puerto interno `5432` del contenedor.
