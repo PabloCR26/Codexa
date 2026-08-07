@@ -126,6 +126,250 @@
 .connection-card > button:disabled { opacity: 0.6; cursor: progress; }
 .connection-card > .danger-button { border-color: #b4443b; background: transparent; color: #b4443b; }
 
+/* --- Automatizaciones --- */
+
+.page-heading,
+.section-heading,
+.automation-summary,
+.action-heading,
+.card-actions,
+.form-actions,
+.row-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.primary-link,
+.secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.85rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.primary-link,
+.primary-button {
+  border: 1px solid #0f766e;
+  background: #0f766e;
+  color: #fff;
+}
+
+.secondary-link,
+.secondary-button {
+  border: 1px solid rgba(128, 128, 128, 0.55);
+  background: transparent;
+  color: inherit;
+}
+
+.automation-list,
+.action-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.automation-card,
+.empty-state,
+.editor-section,
+.action-editor {
+  padding: 1.1rem;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 8px;
+}
+
+.automation-summary h3,
+.empty-state h3 {
+  margin: 0;
+}
+
+.automation-summary p,
+.automation-meta,
+.empty-state p,
+.field-help {
+  margin: 0.3rem 0 0;
+  opacity: 0.7;
+}
+
+.automation-status {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.2);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.automation-status.enabled {
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.12);
+}
+
+.automation-meta {
+  margin: 0.8rem 0;
+  font-size: 0.88rem;
+}
+
+.card-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.card-actions button,
+.secondary-button,
+.primary-button,
+.icon-button {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid rgba(128, 128, 128, 0.55);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.card-actions .danger-button,
+.icon-button.danger-button {
+  border-color: #b4443b;
+  color: #b4443b;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.empty-state .primary-link {
+  margin-top: 1rem;
+}
+
+.automation-editor form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.editor-section {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+}
+
+.editor-section legend {
+  padding: 0 0.3rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.editor-section label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.editor-section input,
+.editor-section select,
+.editor-section textarea {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(128, 128, 128, 0.45);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.editor-section textarea {
+  resize: vertical;
+}
+
+.editor-section input:focus-visible,
+.editor-section select:focus-visible,
+.editor-section textarea:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 1px;
+}
+
+.editor-section input[aria-invalid='true'] {
+  border-color: #b4443b;
+}
+
+.checkbox-field {
+  display: flex !important;
+  align-items: center;
+}
+
+.checkbox-field input {
+  width: auto;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.full-field {
+  grid-column: 1 / -1;
+}
+
+.section-heading legend {
+  float: left;
+}
+
+.condition-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1.2fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.action-editor {
+  display: grid;
+  gap: 0.8rem;
+  background: rgba(128, 128, 128, 0.04);
+}
+
+.icon-button {
+  min-width: 2.25rem;
+  padding: 0.35rem 0.55rem;
+}
+
+button:disabled,
+.icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-actions {
+  justify-content: flex-end;
+}
+
+.primary-button {
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .page-heading,
+  .automation-summary,
+  .section-heading,
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .field-grid,
+  .condition-row {
+    grid-template-columns: 1fr;
+  }
+
+  .condition-row .icon-button {
+    justify-self: end;
+  }
+}
+
 /* --- Páginas de registro e inicio de sesión --- */
 
 .auth {
