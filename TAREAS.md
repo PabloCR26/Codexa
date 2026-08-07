@@ -64,12 +64,12 @@ Marcar con `[x]` lo que se vaya completando.
 > implementados y filtrados por `userId`; se hicieron junto con la tarea 14.
 > Las tareas de esta fase son la interfaz que los consume.
 
-- [ ] **32.** UI de lista con botones de activar/desactivar y eliminar.
-- [ ] **33.** Formulario de creación: nombre, tipo de disparador y su configuración.
-- [ ] **34.** Editor de acciones: agregar, quitar y ordenar; elegir proveedor y tipo de acción.
-- [ ] **35.** Campos de parámetros con plantillas `{{trigger.campo}}`.
-- [ ] **36.** Editor de condiciones: campo, operador y valor.
-- [ ] **37.** Formulario de edición y manejo de errores de validación.
+- [x] **32.** UI de lista con botones de activar/desactivar y eliminar.
+- [x] **33.** Formulario de creación: nombre, tipo de disparador y su configuración.
+- [x] **34.** Editor de acciones: agregar, quitar y ordenar; elegir proveedor y tipo de acción.
+- [x] **35.** Campos de parámetros con plantillas `{{trigger.campo}}`.
+- [x] **36.** Editor de condiciones: campo, operador y valor.
+- [x] **37.** Formulario de edición y manejo de errores de validación.
 
 ## Fase 5 — Catálogo de acciones (3 acciones, 3 proveedores)
 

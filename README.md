@@ -64,7 +64,7 @@ Esta base deja preparado:
   para `webhooks`, `executions` y `2fa`.
 - Publicador BullMQ para la cola `executions`, con reintentos y backoff predeterminados.
 - Worker consumidor con derivación a la cola de fallidos (`executions-dlq`).
-- Frontend React + Vite que verifica la conexión con la API.
+- Frontend React + Vite con autenticación, conexiones OAuth y CRUD de automatizaciones.
 - PostgreSQL 16 y Redis 7 para desarrollo con Docker Compose.
 - Esquema y migración inicial de Prisma.
 - Proveedores `GOOGLE`, `GITHUB` y `TELEGRAM`.
