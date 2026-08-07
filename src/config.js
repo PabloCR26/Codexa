@@ -33,6 +33,8 @@ module.exports = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       redirectUri: process.env.GOOGLE_REDIRECT_URI,
     },
+    // Token de Telegram para la acción send_message (opcional)
+    telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
     // Trabajos simultáneos del worker. Se mantiene bajo para respetar
     // los límites de tasa de las APIs de los proveedores.
     workerConcurrency: Number(process.env.WORKER_CONCURRENCY || 5),
