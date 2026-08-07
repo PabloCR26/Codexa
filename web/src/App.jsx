@@ -12,8 +12,8 @@ import Profile from './pages/Profile'
 import NotFound from './pages/NotFound'
 import './Style/App.css'
 
-// Mapa de rutas de la aplicación. Las páginas son plantillas vacías que se
-// implementan en las fases 2 a 9 de TAREAS.md.
+// Mapa de rutas de la aplicación. Cada fase reemplaza sus páginas reservadas
+// sin alterar la navegación ni la protección de las rutas privadas.
 export default function App() {
   return (
     <Routes>
