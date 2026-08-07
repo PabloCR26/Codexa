@@ -17,6 +17,7 @@ const { executionsRouter } = require("./routes/executions");
 const { oauthRouter } = require("./routes/oauth");
 const { placeholderRouter } = require("./routes/placeholder");
 const { twoFactorRouter } = require("./routes/two-factor");
+const { webhooksRouter } = require("./routes/webhooks");
 
 validateEnvironment();
 
@@ -30,7 +31,16 @@ if (env.nodeEnv === "production") {
 
 app.use(helmet());
 app.use(cors({ origin: env.webUrl, credentials: true }));
-app.use(express.json({ limit: "1mb" }));
+app.use(
+  express.json({
+    limit: "1mb",
+    verify: (request, _response, buffer) => {
+      if (request.originalUrl.startsWith("/api/webhooks")) {
+        request.rawBody = buffer;
+      }
+    },
+  }),
+);
 app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));
 app.use(
   session({
@@ -106,11 +116,7 @@ app.get("/api/csrf-token", (request, response) => {
 app.use("/api/auth", authRouter);
 app.use("/api/automations", automationsRouter);
 
-// El módulo de webhooks todavía no está implementado.
-for (const resource of ["webhooks"]) {
-  app.use(`/api/${resource}`, placeholderRouter(resource));
-}
-
+app.use("/api/webhooks", webhooksRouter);
 app.use("/api/oauth", oauthRouter);
 app.use("/api/connections", connectionsRouter);
 app.use("/api/executions", executionsRouter);

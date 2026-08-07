@@ -18,6 +18,8 @@
     "web:build": "npm --prefix web run build",
     "test": "node --test",
     "oauth:verify-storage": "node scripts/verify-oauth-storage.js",
+    "enqueue:test-job": "node scripts/enqueue-test-job.js",
+    "verify:worker-flow": "node scripts/verify-worker-flow.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",

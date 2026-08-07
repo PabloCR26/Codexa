@@ -1,32 +1,198 @@
 // Motor de ejecución: evalúa las condiciones y ejecuta la cadena de acciones
 // de una automatización. Lo invoca el worker por cada trabajo de la cola.
-//
-// Pendiente de implementar en las fases 5 a 8 de TAREAS.md:
-//   - idempotencia por (automationId, eventId)
-//   - evaluación de condiciones
-//   - interpolación de plantillas {{trigger.campo}}
-//   - despacho a los adaptadores por proveedor
-//   - registro del resultado en la bitácora
-const { prisma } = require("../shared/prisma");
+const { prisma: defaultPrisma } = require("../shared/prisma");
+const { decryptToken } = require("../shared/tokenCrypto");
+const { getAdapter } = require("./adapters");
+const { pollGmailAutomation } = require("./gmailPoller");
+
+function getValueAtPath(data, path) {
+  if (!path) return undefined;
+  const segments = String(path).split(".");
+  let current = data;
+
+  for (const segment of segments) {
+    if (current === null || current === undefined || typeof current !== "object") {
+      return undefined;
+    }
+    if (!(segment in current)) {
+      return undefined;
+    }
+    current = current[segment];
+  }
+
+  return current;
+}
+
+function interpolateValue(value, triggerData) {
+  if (typeof value === "string") {
+    return value.replace(/\{\{\s*([^{}]+)\s*\}\}/g, (_full, path) => {
+      const resolved = getValueAtPath(triggerData, path.trim());
+      return resolved === undefined || resolved === null ? "" : String(resolved);
+    });
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => interpolateValue(item, triggerData));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, interpolateValue(nested, triggerData)]),
+    );
+  }
+
+  return value;
+}
+
+function evaluateCondition(condition, triggerData) {
+  if (!condition || typeof condition !== "object") return true;
+
+  const actualValue = getValueAtPath(triggerData, condition.field);
+  const expectedValue = condition.value;
+
+  switch (condition.operator) {
+    case "eq":
+      return String(actualValue) === String(expectedValue);
+    case "neq":
+      return String(actualValue) !== String(expectedValue);
+    case "contains":
+      return String(actualValue).includes(String(expectedValue));
+    case "gt":
+      return Number(actualValue) > Number(expectedValue);
+    case "lt":
+      return Number(actualValue) < Number(expectedValue);
+    default:
+      return true;
+  }
+}
 
 /**
  * Ejecuta una automatización a partir de un trabajo de la cola.
  * @param {{ automationId: string, eventId: string, triggerData: object }} job
  */
-async function runAutomation(job) {
-  const { automationId, eventId } = job;
+async function runAutomation(job, options = {}) {
+  const prismaClient = options.prismaClient || defaultPrisma;
+  const adapterContext = options.adapterContext || {};
+  const { automationId, eventId, triggerData = {} } = job || {};
 
   if (!automationId || !eventId) {
     throw new Error("El trabajo debe incluir automationId y eventId");
   }
 
-  const automation = await prisma.automation.findUnique({ where: { id: automationId } });
+  const automation = await prismaClient.automation.findUnique({ where: { id: automationId } });
 
   if (!automation || !automation.enabled) {
     return { skipped: true, reason: "automatizacion inexistente o desactivada" };
   }
 
-  throw new Error("El motor de ejecucion aun no esta implementado");
+  const existingExecution = await prismaClient.execution.findUnique({
+    where: {
+      automationId_eventId: {
+        automationId,
+        eventId,
+      },
+    },
+  });
+
+  if (existingExecution) {
+    return { skipped: true, reason: "ejecucion ya registrada", execution: existingExecution };
+  }
+
+  const execution = await prismaClient.execution.create({
+    data: {
+      automationId,
+      eventId,
+      status: "PENDING",
+      userId: automation.userId,
+      triggerData,
+      attempt: 0,
+    },
+  });
+
+  const actionResults = [];
+  try {
+    await prismaClient.execution.update({
+      where: { id: execution.id },
+      data: {
+        status: "RUNNING",
+        startedAt: new Date(),
+      },
+    });
+
+    if (automation.triggerType === "GMAIL_POLL") {
+      const pollResult = await pollGmailAutomation(automation);
+      return { status: "SKIPPED", execution: execution, pollResult };
+    }
+
+    const conditions = Array.isArray(automation.conditions) ? automation.conditions : [];
+    const conditionsMet = conditions.every((condition) => evaluateCondition(condition, triggerData));
+
+    if (!conditionsMet) {
+      const skippedExecution = await prismaClient.execution.update({
+        where: { id: execution.id },
+        data: {
+          status: "SKIPPED",
+          finishedAt: new Date(),
+          output: { skipped: true, reason: "conditions_not_met" },
+        },
+      });
+      return { status: "SKIPPED", execution: skippedExecution };
+    }
+
+    for (const action of Array.isArray(automation.actions) ? automation.actions : []) {
+      const resolvedParams = interpolateValue(action.params || {}, triggerData);
+      const connection = await prismaClient.connection.findFirst({
+        where: {
+          userId: automation.userId,
+          provider: action.provider,
+        },
+      });
+
+      const adapterConnection = {
+        ...connection,
+        accessToken: connection?.accessToken || (connection?.accessTokenEncrypted ? decryptToken(connection.accessTokenEncrypted) : undefined),
+        refreshToken: connection?.refreshToken || (connection?.refreshTokenEncrypted ? decryptToken(connection.refreshTokenEncrypted) : undefined),
+      };
+
+      const adapter = getAdapter(action.provider, action.actionType);
+      const result = adapterContext.skipExternalCalls
+        ? { success: true, skipped: true, reason: "skip_external_calls" }
+        : await adapter({ params: resolvedParams, connection: adapterConnection, context: { automation, execution, triggerData } });
+
+      actionResults.push({
+        provider: action.provider,
+        actionType: action.actionType,
+        params: resolvedParams,
+        result,
+      });
+    }
+
+    const finishedExecution = await prismaClient.execution.update({
+      where: { id: execution.id },
+      data: {
+        status: "SUCCEEDED",
+        finishedAt: new Date(),
+        output: { actions: actionResults, triggerData },
+      },
+    });
+
+    return { status: "SUCCEEDED", execution: finishedExecution, actionResults };
+  } catch (error) {
+    const failedExecution = await prismaClient.execution.update({
+      where: { id: execution.id },
+      data: {
+        status: "FAILED",
+        finishedAt: new Date(),
+        error: {
+          message: error.message,
+          code: error.code || "EXECUTION_FAILED",
+          statusCode: error.statusCode || 500,
+        },
+        output: { actions: actionResults, triggerData },
+      },
+    });
+    return { status: "FAILED", execution: failedExecution, error };
+  }
 }
 
 module.exports = { runAutomation };

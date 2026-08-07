@@ -4,12 +4,14 @@
 const { Worker } = require("bullmq");
 const { validateEnvironment, env } = require("../config");
 const { createRedisConnection } = require("../shared/redis");
-const { EXECUTIONS_QUEUE, createDeadLetterQueue } = require("../shared/queue");
+const { EXECUTIONS_QUEUE, createDeadLetterQueue, createExecutionsQueue } = require("../shared/queue");
 const { runAutomation } = require("./engine");
+const { syncCronAutomations } = require("./scheduler");
 
 validateEnvironment();
 
 const deadLetterQueue = createDeadLetterQueue();
+const schedulingQueue = createExecutionsQueue();
 
 const worker = new Worker(
   EXECUTIONS_QUEUE,
@@ -24,7 +26,7 @@ const worker = new Worker(
 );
 
 worker.on("completed", (job, result) => {
-  console.log(`Job ${job.id} completado`, result);
+  console.log(`Job ${job.id} completado`, JSON.stringify(result));
 });
 
 worker.on("failed", async (job, error) => {
@@ -53,6 +55,16 @@ worker.on("error", (error) => {
 });
 
 console.log(`Worker de FlowHub escuchando la cola ${EXECUTIONS_QUEUE}`);
+
+syncCronAutomations(schedulingQueue).catch((error) => {
+  console.error("No se pudieron sincronizar los jobs cron", error);
+});
+
+setInterval(() => {
+  syncCronAutomations(schedulingQueue).catch((error) => {
+    console.error("No se pudieron sincronizar los jobs cron", error);
+  });
+}, 60_000);
 
 async function shutdown(signal) {
   console.log(`${signal}: cerrando worker`);

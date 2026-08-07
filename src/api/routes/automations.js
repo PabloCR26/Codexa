@@ -3,6 +3,7 @@ const { asyncHandler } = require("../middleware/asyncHandler");
 const { requireAuth } = require("../middleware/requireAuth");
 const { automationSchema, updateSchema } = require("../validators/automations");
 const service = require("../services/automations");
+const { createExecutionsQueue } = require("../../shared/queue");
 
 const router = express.Router();
 
@@ -59,6 +60,21 @@ router.patch(
   "/:id/toggle",
   asyncHandler(async (request, response) => {
     response.json(await service.toggle(request.userId, request.params.id));
+  }),
+);
+
+router.post(
+  "/:id/dispatch",
+  asyncHandler(async (request, response) => {
+    const queue = createExecutionsQueue();
+    const job = await queue.add("run-automation", {
+      automationId: request.params.id,
+      eventId: request.body?.eventId || `event-${Date.now()}`,
+      triggerData: request.body?.triggerData || {},
+      version: 1,
+    });
+    await queue.close();
+    response.status(202).json({ accepted: true, jobId: job.id });
   }),
 );
 
