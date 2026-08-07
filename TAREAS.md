@@ -73,13 +73,13 @@ Marcar con `[x]` lo que se vaya completando.
 
 ## Fase 5 — Catálogo de acciones (3 acciones, 3 proveedores)
 
-- [ ] **38.** Crear el bot con @BotFather, obtener el `TELEGRAM_BOT_TOKEN` y probar la
+- [x] **38.** Crear el bot con @BotFather, obtener el `TELEGRAM_BOT_TOKEN` y probar la
   acción `send_message` (ya implementada) de punta a punta.
-- [ ] **39.** Acción **GitHub** `create_issue`: `POST /repos/{owner}/{repo}/issues`
+- [x] **39.** Acción **GitHub** `create_issue`: `POST /repos/{owner}/{repo}/issues`
   con el token del usuario.
-- [ ] **40.** Acción **Gmail** `send_email`: `users.messages.send` con el mensaje MIME
+- [x] **40.** Acción **Gmail** `send_email`: `users.messages.send` con el mensaje MIME
   codificado en base64url.
-- [ ] **41.** Clasificar los errores de cada adaptador: 429 y 5xx **reintentables**,
+- [x] **41.** Clasificar los errores de cada adaptador: 429 y 5xx **reintentables**,
   4xx **permanentes**.
 
 ## Fase 6 — Motor asíncrono y disparadores
