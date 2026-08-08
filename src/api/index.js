@@ -62,6 +62,13 @@ app.use(
 );
 
 function ensureCsrfToken(request, response, next) {
+  // Los webhooks los envían servicios externos, que no tienen sesión ni pueden
+  // conocer el token CSRF. Su autenticidad se comprueba con la firma HMAC del
+  // propio proveedor, así que quedan fuera de esta validación.
+  if (request.path.startsWith("/api/webhooks")) {
+    return next();
+  }
+
   // Garantizar que la sesión existe; si no, pasar al siguiente middleware
   // para que express-session la cree.
   if (!request.session) {
