@@ -17,7 +17,14 @@ const worker = new Worker(
   EXECUTIONS_QUEUE,
   async (job) => {
     console.log(`Procesando job ${job.id} (intento ${job.attemptsMade + 1})`);
-    return runAutomation(job.data);
+
+    // Los disparos programados no traen eventId: cada corrida es un evento
+    // nuevo. Se usa el identificador del job, que BullMQ genera con la marca
+    // de tiempo de la corrida y conserva entre reintentos: así un reintento
+    // sigue siendo el mismo evento y el motor no duplica las acciones.
+    const datos = job.data?.eventId ? job.data : { ...job.data, eventId: job.id };
+
+    return runAutomation(datos);
   },
   {
     connection: createRedisConnection(),
@@ -60,11 +67,15 @@ syncCronAutomations(schedulingQueue).catch((error) => {
   console.error("No se pudieron sincronizar los jobs cron", error);
 });
 
+// Reconciliación periódica: es la que aplica los cambios del CRUD sobre las
+// programaciones (altas, cambios de expresión y bajas por desactivar o borrar).
+// Con 30 segundos, un cambio hecho desde la interfaz se refleja antes del
+// siguiente minuto, que es la granularidad mínima de una expresión cron.
 setInterval(() => {
   syncCronAutomations(schedulingQueue).catch((error) => {
     console.error("No se pudieron sincronizar los jobs cron", error);
   });
-}, 60_000);
+}, 30_000);
 
 async function shutdown(signal) {
   console.log(`${signal}: cerrando worker`);

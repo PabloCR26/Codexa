@@ -84,19 +84,19 @@ Marcar con `[x]` lo que se vaya completando.
 
 ## Fase 6 — Motor asíncrono y disparadores
 
-- [ ] **42.** Arrancar el worker y confirmar que conecta a Redis.
-- [ ] **43.** Script que encole un job manualmente y verificar que el worker lo consume.
-- [ ] **44.** Revisar `engine.js`: que ejecute las acciones **en orden** y registre la ejecución.
-- [ ] **45.** Levantar el túnel (`ngrok http 4000`) y configurar el webhook en un repo de prueba.
-- [ ] **46.** Probar la validación de firma HMAC del webhook, incluyendo una firma inválida.
-- [ ] **47.** Confirmar que la API **encola y responde 202 sin ejecutar la acción**
+- [X] **42.** Arrancar el worker y confirmar que conecta a Redis.
+- [X] **43.** Script que encole un job manualmente y verificar que el worker lo consume.
+- [X] **44.** Revisar `engine.js`: que ejecute las acciones **en orden** y registre la ejecución.
+- [X] **45.** Levantar el túnel (`ngrok http 4000`) y configurar el webhook en un repo de prueba.
+- [X] **46.** Probar la validación de firma HMAC del webhook, incluyendo una firma inválida.
+- [X] **47.** Confirmar que la API **encola y responde 202 sin ejecutar la acción**
   (requisito arquitectónico central; dejarlo como demo para la defensa).
-- [ ] **48.** Extraer los datos del evento al `triggerData` que consumen las plantillas.
-- [ ] **49.** Proceso `scheduler`: registrar **repeatable jobs** de BullMQ según la expresión
+- [X] **48.** Extraer los datos del evento al `triggerData` que consumen las plantillas.
+- [X] **49.** Proceso `scheduler`: registrar **repeatable jobs** de BullMQ según la expresión
   cron que define el usuario.
-- [ ] **50.** Sincronizar los jobs programados cuando una automatización se crea, edita,
+- [X] **50.** Sincronizar los jobs programados cuando una automatización se crea, edita,
   activa o desactiva.
-- [ ] **51.** Disparador de **sondeo de Gmail**: consultar correos nuevos usando el cursor
+- [X] **51.** Disparador de **sondeo de Gmail**: consultar correos nuevos usando el cursor
   de `TriggerState`.
 
 ## Fase 7 — Robustez del procesamiento

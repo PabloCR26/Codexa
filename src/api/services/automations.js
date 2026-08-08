@@ -1,11 +1,16 @@
 const { prisma } = require("../../shared/prisma");
-const { createExecutionsQueue } = require("../../shared/queue");
-const { buildCronJobName } = require("../../worker/scheduler");
 
 // Regla de aislamiento: TODAS las consultas de este servicio reciben el
 // userId de la sesión y lo incluyen en el where. Nunca se busca una
 // automatización solo por su id, porque eso permitiría leer o modificar
 // la de otro usuario conociendo el identificador.
+//
+// La programación de los disparadores CRON no se maneja aquí: es
+// responsabilidad del worker, que reconcilia periódicamente las
+// programaciones de BullMQ con las automatizaciones activas
+// (ver src/worker/scheduler.js). Mantenerlo así evita que la API abra
+// conexiones a Redis dentro de una petición y respeta la separación entre
+// productor y consumidor.
 
 class NotFoundError extends Error {
   constructor() {
@@ -13,39 +18,6 @@ class NotFoundError extends Error {
     this.code = "AUTOMATION_NOT_FOUND";
     this.status = 404;
   }
-}
-
-async function syncCronJobs(prismaClient, automation) {
-  if (automation.triggerType !== "CRON") {
-    return;
-  }
-
-  const queue = createExecutionsQueue();
-  const jobName = buildCronJobName(automation.id);
-
-  if (!automation.enabled) {
-    await queue.remove(jobName);
-    await queue.close();
-    return;
-  }
-
-  await queue.add(
-    jobName,
-    {
-      automationId: automation.id,
-      eventId: `cron-${Date.now()}`,
-      triggerData: {
-        expression: automation.triggerConfig?.expression || "",
-        automationName: automation.name,
-      },
-      version: 1,
-    },
-    {
-      repeat: { pattern: automation.triggerConfig?.expression || "0 * * * *" },
-      jobId: jobName,
-    },
-  );
-  await queue.close();
 }
 
 function createAutomationService({ prismaClient = prisma } = {}) {
@@ -63,9 +35,7 @@ function createAutomationService({ prismaClient = prisma } = {}) {
   }
 
   async function create(userId, datos) {
-    const created = await prismaClient.automation.create({ data: { ...datos, userId } });
-    await syncCronJobs(prismaClient, created);
-    return created;
+    return prismaClient.automation.create({ data: { ...datos, userId } });
   }
 
   async function update(userId, id, datos) {
@@ -76,27 +46,20 @@ function createAutomationService({ prismaClient = prisma } = {}) {
       data: datos,
     });
     if (resultado.count === 0) throw new NotFoundError();
-    const updated = await getById(userId, id);
-    await syncCronJobs(prismaClient, updated);
-    return updated;
+    return getById(userId, id);
   }
 
   async function toggle(userId, id) {
     const actual = await getById(userId, id);
-    const updated = await prismaClient.automation.update({
+    return prismaClient.automation.update({
       where: { id: actual.id },
       data: { enabled: !actual.enabled },
     });
-    await syncCronJobs(prismaClient, updated);
-    return updated;
   }
 
   async function remove(userId, id) {
     const resultado = await prismaClient.automation.deleteMany({ where: { id, userId } });
     if (resultado.count === 0) throw new NotFoundError();
-    const queue = createExecutionsQueue();
-    await queue.remove(buildCronJobName(id));
-    await queue.close();
   }
 
   return { list, getById, create, update, toggle, remove };
