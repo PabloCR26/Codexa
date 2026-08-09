@@ -26,10 +26,21 @@ router.get(
 );
 
 // Contadores por estado, para el encabezado de la bitácora.
+//
+// Debe declararse ANTES de "/:id": Express toma la primera ruta que coincide,
+// y si "/:id" fuera antes, capturaría "summary" como si fuera un identificador.
 router.get(
   "/summary",
   asyncHandler(async (request, response) => {
     response.json(await service.summary(request.userId));
+  }),
+);
+
+// Detalle con entrada, salida y error.
+router.get(
+  "/:id",
+  asyncHandler(async (request, response) => {
+    response.json(await service.getById(request.userId, request.params.id));
   }),
 );
 

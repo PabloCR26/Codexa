@@ -53,6 +53,34 @@ function createExecutionService({ prismaClient = prisma } = {}) {
     };
   }
 
+  // Detalle completo: aquí sí se devuelven los datos del disparador, la salida
+  // de cada acción y el error, que son el objeto de la bitácora.
+  //
+  // La búsqueda incluye el userId: sin él, cualquiera podría leer la ejecución
+  // de otra persona conociendo el identificador. Se responde 404 y no 403 para
+  // no confirmar siquiera que ese identificador existe.
+  async function getById(userId, id) {
+    const execution = await prismaClient.execution.findFirst({
+      where: { id, userId },
+      select: {
+        id: true,
+        status: true,
+        eventId: true,
+        attempt: true,
+        triggerData: true,
+        output: true,
+        error: true,
+        startedAt: true,
+        finishedAt: true,
+        createdAt: true,
+        automation: { select: { id: true, name: true, triggerType: true } },
+      },
+    });
+
+    if (!execution) throw new NotFoundError();
+    return execution;
+  }
+
   // Resumen por estado, para mostrar los contadores encima de la tabla.
   async function summary(userId) {
     const filas = await prismaClient.execution.groupBy({
@@ -67,7 +95,7 @@ function createExecutionService({ prismaClient = prisma } = {}) {
     }, {});
   }
 
-  return { list, summary };
+  return { list, getById, summary };
 }
 
 const executionService = createExecutionService();
