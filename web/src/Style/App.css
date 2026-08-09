@@ -465,6 +465,195 @@ button:disabled,
   opacity: 0.85;
 }
 
+/* --- Bitácora de ejecuciones --- */
+
+/* Un color por estado, para reconocerlo sin leer la etiqueta. */
+.tono-success { --tono: #0f766e; }
+.tono-error   { --tono: #b4443b; }
+.tono-pending { --tono: #a8611a; }
+.tono-running { --tono: #2563eb; }
+.tono-neutral { --tono: #6b7280; }
+
+.etiqueta {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--tono);
+  border-radius: 999px;
+  color: var(--tono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.25rem 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: currentColor;
+}
+
+.chip.activo {
+  border-color: var(--tono, currentColor);
+  color: var(--tono, inherit);
+  font-weight: 600;
+}
+
+.chip-conteo {
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.2);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La tabla puede ser ancha: se desplaza dentro de su caja y no estira la
+   página entera en pantallas chicas. */
+.tabla-scroll {
+  overflow-x: auto;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
+}
+
+.tabla-ejecuciones {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 38rem;
+}
+
+.tabla-ejecuciones th,
+.tabla-ejecuciones td {
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.tabla-ejecuciones th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+.tabla-ejecuciones tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.tabla-ejecuciones .numerico {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+
+.paginacion button {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.paginacion button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --- Detalle de una ejecución --- */
+
+.ficha {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
+}
+
+.ficha dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+}
+
+.ficha dd {
+  margin: 0.25rem 0 0;
+}
+
+.monoespaciado {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85em;
+}
+
+.bloque-detalle {
+  margin-top: 1.5rem;
+}
+
+.bloque-detalle h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.bloque-detalle.error {
+  padding: 1rem;
+  border: 1px solid #b4443b;
+  border-radius: 8px;
+}
+
+.mensaje-error {
+  margin: 0 0 0.25rem;
+  color: #b4443b;
+  font-weight: 600;
+}
+
+.json {
+  margin: 0.5rem 0 0;
+  padding: 0.75rem;
+  overflow-x: auto;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 6px;
+  background: rgba(128, 128, 128, 0.08);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.sin-datos {
+  margin: 0.5rem 0 0;
+  opacity: 0.6;
+  font-size: 0.9rem;
+}
+
 @media (prefers-color-scheme: dark) {
   .estado {
     color: #e8877d;
@@ -486,5 +675,18 @@ button:disabled,
   .alerta {
     color: #e8877d;
     border-color: #e8877d;
+  }
+
+  .tono-success { --tono: #2dd4bf; }
+  .tono-error   { --tono: #e8877d; }
+  .tono-pending { --tono: #e0a458; }
+  .tono-running { --tono: #7aa2f7; }
+  .tono-neutral { --tono: #9ca3af; }
+
+  .bloque-detalle.error {
+    border-color: #e8877d;
+  }
+  .mensaje-error {
+    color: #e8877d;
   }
 }

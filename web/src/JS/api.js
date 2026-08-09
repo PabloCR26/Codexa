@@ -86,8 +86,17 @@ export const api = {
   listConnections: () => request('/connections'),
   deleteConnection: (id) => request(`/connections/${id}`, { method: 'DELETE' }),
 
-  // Bitácora
-  listExecutions: (query = '') => request(`/executions${query}`),
+  // Bitácora. Los filtros vacíos se descartan para no mandar
+  // parámetros como "status=" que el backend rechazaría.
+  listExecutions: (filtros = {}) => {
+    const params = new URLSearchParams();
+    for (const [clave, valor] of Object.entries(filtros)) {
+      if (valor !== undefined && valor !== null && valor !== '') params.set(clave, valor);
+    }
+    const query = params.toString();
+    return request(`/executions${query ? `?${query}` : ''}`);
+  },
+  executionsSummary: () => request('/executions/summary'),
   getExecution: (id) => request(`/executions/${id}`),
 
   // Segundo factor (TOTP)
