@@ -115,7 +115,7 @@ Marcar con `[x]` lo que se vaya completando.
 - [ ] **56.** Probar los operadores de condiciones (`eq`, `neq`, `contains`, `gt`, `lt`)
   y que detengan la automatización cuando no se cumplen.
 - [ ] **57.** Probar la interpolación de plantillas, con campos anidados e inexistentes.
-- [ ] **58.** `GET /api/executions`: historial del usuario con filtro por estado y paginación.
+- [X] **58.** `GET /api/executions`: historial del usuario con filtro por estado y paginación.
 - [ ] **59.** `GET /api/executions/:id`: detalle con entrada, salida y error.
 - [ ] **60.** UI de bitácora: tabla con estado, fecha y automatización, más vista de detalle.
   Deben verse **pendientes, exitosas y fallidas**.
