@@ -1,20 +1,45 @@
 // Adaptador para GitHub
 // Crea issues en repositorios
 
-// Errores permanentes: 4xx (excepto 429)
-// Errores reintentables: 429 y 5xx
-const PERMANENT_ERRORS = /^4[0-2]\d|^4[3-9]\d/;
-const RETRYABLE_ERRORS = /^429|^5\d\d/;
+// Clasificación de errores, en números y no con expresiones regulares: la
+// versión anterior usaba /^4[0-2]\d/ para "permanente", que también capturaba
+// el 429 y hacía que un límite de tasa no se reintentara nunca.
+//
+//   permanente   -> 4xx menos 429: repetirlo daría el mismo resultado
+//   reintentable -> 429 y 5xx: el problema es temporal
+function esPermanente(statusCode) {
+  return statusCode >= 400 && statusCode < 500 && statusCode !== 429;
+}
+
+function esReintentable(statusCode) {
+  return statusCode === 429 || statusCode >= 500;
+}
 
 class GitHubError extends Error {
-  constructor(message, code, statusCode) {
+  constructor(message, code, statusCode, retryAfter) {
     super(message);
     this.name = "GitHubError";
     this.code = code;
     this.statusCode = statusCode;
-    this.isRetryable = RETRYABLE_ERRORS.test(String(statusCode));
-    this.isPermanent = PERMANENT_ERRORS.test(String(statusCode));
+    this.isRetryable = esReintentable(statusCode);
+    this.isPermanent = esPermanente(statusCode);
+    // Segundos que pide esperar el proveedor antes de reintentar.
+    this.retryAfter = retryAfter;
   }
+}
+
+// GitHub responde con Retry-After, o con X-RateLimit-Reset como marca de
+// tiempo absoluta cuando se agota la cuota horaria.
+function esperaSugerida(response) {
+  const retryAfter = Number(response.headers.get("retry-after"));
+  if (Number.isFinite(retryAfter) && retryAfter > 0) return retryAfter;
+
+  const reset = Number(response.headers.get("x-ratelimit-reset"));
+  if (Number.isFinite(reset) && reset > 0) {
+    return Math.max(1, Math.ceil(reset - Date.now() / 1000));
+  }
+
+  return undefined;
 }
 
 async function createIssue({ params, connection, context }) {
@@ -60,6 +85,7 @@ async function createIssue({ params, connection, context }) {
         error.message || "Error en GitHub",
         error.errors?.[0]?.code || "UNKNOWN_ERROR",
         response.status,
+        esperaSugerida(response),
       );
     }
 

@@ -1,7 +1,7 @@
 // Worker (consumidor): proceso independiente de la API.
 // Toma trabajos de la cola `executions` y ejecuta la cadena de acciones.
 // Se arranca y despliega por separado; solo se comunica con la API vía Redis.
-const { Worker } = require("bullmq");
+const { Worker, UnrecoverableError, DelayedError } = require("bullmq");
 const { validateEnvironment, env } = require("../config");
 const { createRedisConnection } = require("../shared/redis");
 const { EXECUTIONS_QUEUE, createDeadLetterQueue, createExecutionsQueue } = require("../shared/queue");
@@ -15,7 +15,7 @@ const schedulingQueue = createExecutionsQueue();
 
 const worker = new Worker(
   EXECUTIONS_QUEUE,
-  async (job) => {
+  async (job, token) => {
     console.log(`Procesando job ${job.id} (intento ${job.attemptsMade + 1})`);
 
     // Los disparos programados no traen eventId: cada corrida es un evento
@@ -24,7 +24,31 @@ const worker = new Worker(
     // sigue siendo el mismo evento y el motor no duplica las acciones.
     const datos = job.data?.eventId ? job.data : { ...job.data, eventId: job.id };
 
-    return runAutomation(datos);
+    try {
+      return await runAutomation(datos);
+    } catch (error) {
+      // Error permanente (4xx salvo 429): reintentarlo daría el mismo
+      // resultado y solo gastaría cuota del proveedor. Se manda directo a la
+      // cola de fallidos sin agotar los intentos.
+      if (error.isPermanent) {
+        console.error(`Job ${job.id}: error permanente (${error.code}), no se reintenta`);
+        throw new UnrecoverableError(`${error.code || "PERMANENT_ERROR"}: ${error.message}`);
+      }
+
+      // Límite de tasa: el proveedor dice cuánto esperar. Se respeta ese valor
+      // en lugar del backoff propio, que podría reintentar antes de tiempo y
+      // recibir otro 429.
+      const espera = Number(error.retryAfter);
+      if (Number.isFinite(espera) && espera > 0) {
+        console.warn(`Job ${job.id}: límite de tasa, se reintenta en ${espera}s`);
+        await job.moveToDelayed(Date.now() + espera * 1000, token);
+        throw new DelayedError();
+      }
+
+      // Fallo transitorio (5xx, red): se propaga para que BullMQ reintente
+      // aplicando el retroceso exponencial configurado en la cola.
+      throw error;
+    }
   },
   {
     connection: createRedisConnection(),
@@ -43,15 +67,24 @@ worker.on("failed", async (job, error) => {
   }
 
   const intentos = job.opts.attempts || 1;
+  const esPermanente = error.name === "UnrecoverableError";
+  const agotoReintentos = job.attemptsMade >= intentos;
+
   console.error(`Job ${job.id} fallo en el intento ${job.attemptsMade}: ${error.message}`);
 
-  // Solo cuando se agotan los reintentos el trabajo pasa a la cola de fallidos.
-  if (job.attemptsMade >= intentos) {
-    console.error(`Job ${job.id} agoto los reintentos, se envia a la DLQ`);
+  // Un trabajo llega a la cola de fallidos por dos caminos: agotó sus
+  // reintentos, o falló con un error permanente que no tiene sentido repetir.
+  // Sin contemplar el segundo caso, los errores permanentes se perderían:
+  // BullMQ los descarta de inmediato, sin llegar al tope de intentos.
+  if (agotoReintentos || esPermanente) {
+    const motivo = esPermanente ? "error permanente" : "agoto los reintentos";
+    console.error(`Job ${job.id} ${motivo}, se envia a la DLQ`);
     await deadLetterQueue.add("failed", {
       originalJobId: job.id,
       data: job.data,
       error: error.message,
+      permanente: esPermanente,
+      intentos: job.attemptsMade,
       failedAt: new Date().toISOString(),
     });
   }

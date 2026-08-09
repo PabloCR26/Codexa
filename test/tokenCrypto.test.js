@@ -16,6 +16,10 @@ test("cifra tokens con AES-256-GCM sin conservar el texto original", () => {
 test("rechaza un token cifrado manipulado", () => {
   const encrypted = encryptToken("token");
   const parts = encrypted.split(":");
-  parts[3] = `${parts[3].slice(0, -1)}A`;
+  // Se cambia el último carácter por otro distinto. Poner siempre "A" hacía la
+  // prueba intermitente: cuando el original ya era "A" el token quedaba igual,
+  // descifraba bien y la comprobación fallaba.
+  const ultimo = parts[3].slice(-1);
+  parts[3] = `${parts[3].slice(0, -1)}${ultimo === "A" ? "B" : "A"}`;
   assert.throws(() => decryptToken(parts.join(":")));
 });

@@ -101,13 +101,13 @@ Marcar con `[x]` lo que se vaya completando.
 
 ## Fase 7 — Robustez del procesamiento
 
-- [ ] **52.** **Idempotencia:** encolar dos veces el mismo evento y demostrar que la acción
+- [x] **52.** **Idempotencia:** encolar dos veces el mismo evento y demostrar que la acción
   se ejecuta una sola vez.
-- [ ] **53.** **Reintentos con backoff:** provocar un fallo transitorio y ver en los logs
+- [x] **53.** **Reintentos con backoff:** provocar un fallo transitorio y ver en los logs
   los reintentos espaciándose exponencialmente.
-- [ ] **54.** **DLQ:** provocar un fallo permanente y verificar que el job cae en la cola de
+- [x] **54.** **DLQ:** provocar un fallo permanente y verificar que el job cae en la cola de
   fallidos y la ejecución queda como `FAILED`.
-- [ ] **55.** Respetar *rate limits*: usar el `Retry-After` del proveedor y limitar la
+- [x] **55.** Respetar *rate limits*: usar el `Retry-After` del proveedor y limitar la
   concurrencia del worker.
 
 ## Fase 8 — Condiciones y bitácora

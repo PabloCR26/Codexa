@@ -94,20 +94,37 @@ async function runAutomation(job, options = {}) {
     },
   });
 
-  if (existingExecution) {
+  // Idempotencia: lo que nunca debe repetirse es un trabajo que ya terminó
+  // bien. Si el proveedor reenvía la misma entrega y su ejecución quedó
+  // SUCCEEDED (o se omitió por condiciones), no se vuelve a ejecutar.
+  const TERMINADAS = ["SUCCEEDED", "SKIPPED"];
+  if (existingExecution && TERMINADAS.includes(existingExecution.status)) {
     return { skipped: true, reason: "ejecucion ya registrada", execution: existingExecution };
   }
 
-  const execution = await prismaClient.execution.create({
-    data: {
-      automationId,
-      eventId,
-      status: "PENDING",
-      userId: automation.userId,
-      triggerData,
-      attempt: 0,
-    },
-  });
+  // Si existe pero no llegó a terminar bien, se reutiliza la misma fila: es un
+  // reintento del mismo evento. Crear otra violaría la restricción única
+  // (automationId, eventId) y ensuciaría la bitácora con duplicados.
+  const execution = existingExecution
+    ? await prismaClient.execution.update({
+        where: { id: existingExecution.id },
+        data: {
+          status: "PENDING",
+          attempt: (existingExecution.attempt || 0) + 1,
+          error: null,
+          finishedAt: null,
+        },
+      })
+    : await prismaClient.execution.create({
+        data: {
+          automationId,
+          eventId,
+          status: "PENDING",
+          userId: automation.userId,
+          triggerData,
+          attempt: 0,
+        },
+      });
 
   const actionResults = [];
   try {
@@ -178,7 +195,7 @@ async function runAutomation(job, options = {}) {
 
     return { status: "SUCCEEDED", execution: finishedExecution, actionResults };
   } catch (error) {
-    const failedExecution = await prismaClient.execution.update({
+    await prismaClient.execution.update({
       where: { id: execution.id },
       data: {
         status: "FAILED",
@@ -191,7 +208,12 @@ async function runAutomation(job, options = {}) {
         output: { actions: actionResults, triggerData },
       },
     });
-    return { status: "FAILED", execution: failedExecution, error };
+
+    // El error se relanza en lugar de devolverse. Si se devolviera un
+    // resultado, BullMQ daría el trabajo por exitoso y no habría reintentos
+    // ni cola de fallidos: toda la política de robustez quedaría inerte.
+    error.executionId = execution.id;
+    throw error;
   }
 }
 

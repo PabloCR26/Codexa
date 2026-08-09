@@ -3,19 +3,30 @@
 
 const { env } = require("../../config");
 
-// Errores permanentes: 4xx (excepto 429)
-// Errores reintentables: 429 y 5xx
-const PERMANENT_ERRORS = /^4[0-2]\d|^4[3-9]\d/;
-const RETRYABLE_ERRORS = /^429|^5\d\d/;
+// Clasificación de errores, en números y no con expresiones regulares: la
+// versión anterior usaba /^4[0-2]\d/ para "permanente", que también capturaba
+// el 429 y hacía que un límite de tasa no se reintentara nunca.
+//
+//   permanente   -> 4xx menos 429: repetirlo daría el mismo resultado
+//   reintentable -> 429 y 5xx: el problema es temporal
+function esPermanente(statusCode) {
+  return statusCode >= 400 && statusCode < 500 && statusCode !== 429;
+}
+
+function esReintentable(statusCode) {
+  return statusCode === 429 || statusCode >= 500;
+}
 
 class TelegramError extends Error {
-  constructor(message, code, statusCode) {
+  constructor(message, code, statusCode, retryAfter) {
     super(message);
     this.name = "TelegramError";
     this.code = code;
     this.statusCode = statusCode;
-    this.isRetryable = RETRYABLE_ERRORS.test(String(statusCode));
-    this.isPermanent = PERMANENT_ERRORS.test(String(statusCode));
+    this.isRetryable = esReintentable(statusCode);
+    this.isPermanent = esPermanente(statusCode);
+    // Segundos que pide esperar el proveedor antes de reintentar.
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -46,10 +57,15 @@ async function sendMessage({ params, connection, context }) {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
+      // Telegram indica la espera en parameters.retry_after; el encabezado
+      // estándar se usa como respaldo.
+      const retryAfter =
+        error.parameters?.retry_after ?? Number(response.headers.get("retry-after")) ?? undefined;
       throw new TelegramError(
         error.description || "Error en Telegram",
         error.error_code || "UNKNOWN_ERROR",
         response.status,
+        retryAfter,
       );
     }
 
