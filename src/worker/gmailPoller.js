@@ -1,3 +1,17 @@
+// ESQUELETO — el sondeo de Gmail NO está implementado (tarea 51 de TAREAS.md).
+//
+// Este archivo administra el cursor en TriggerState, pero nunca consulta la API
+// de Gmail: siempre devuelve "gmail_poll_stub" y ninguna automatización de tipo
+// GMAIL_POLL llega a dispararse.
+//
+// El enunciado ya está cubierto con los otros dos disparadores: el webhook de
+// GitHub (basado en eventos) y el cron (basado en tiempo). Este sería un tercero.
+//
+// Para completarlo haría falta:
+//   1. obtener un token vigente con shared/oauthTokens.getValidAccessToken
+//   2. llamar a users.history.list usando el historyId guardado como cursor
+//   3. armar un triggerData por cada correo nuevo y encolarlo
+//   4. guardar el historyId más reciente para no reprocesar
 const { prisma } = require("../shared/prisma");
 
 async function pollGmailAutomation(automation) {

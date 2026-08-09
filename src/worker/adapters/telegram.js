@@ -35,14 +35,19 @@ async function sendMessage({ params, connection, context }) {
     throw new TelegramError("Token de Telegram no configurado", "MISSING_TOKEN", 500);
   }
 
-  const { chatId, message, parseMode = "HTML" } = params;
+  // El formulario guarda el mensaje como "text" (ver el catálogo en
+  // web/src/JS/automationCatalog.js). El adaptador leía solo "message", así que
+  // toda acción de Telegram creada desde la interfaz fallaba con
+  // MISSING_MESSAGE. Se acepta "message" como alias por compatibilidad.
+  const { chatId, parseMode = "HTML" } = params;
+  const texto = params.text ?? params.message;
 
   if (!chatId) {
     throw new TelegramError("chatId es requerido", "MISSING_CHAT_ID", 400);
   }
 
-  if (!message) {
-    throw new TelegramError("message es requerido", "MISSING_MESSAGE", 400);
+  if (!texto) {
+    throw new TelegramError("El mensaje es requerido", "MISSING_MESSAGE", 400);
   }
 
   const url = `https://api.telegram.org/bot${env.telegramBotToken}/sendMessage`;
@@ -51,7 +56,7 @@ async function sendMessage({ params, connection, context }) {
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: parseMode }),
+      body: JSON.stringify({ chat_id: chatId, text: texto, parse_mode: parseMode }),
       timeout: 10000,
     });
 

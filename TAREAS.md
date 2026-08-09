@@ -96,7 +96,7 @@ Marcar con `[x]` lo que se vaya completando.
   cron que define el usuario.
 - [X] **50.** Sincronizar los jobs programados cuando una automatización se crea, edita,
   activa o desactiva.
-- [X] **51.** Disparador de **sondeo de Gmail**: consultar correos nuevos usando el cursor
+- [ ] **51.** Disparador de **sondeo de Gmail** (NO implementado: el archivo es un esqueleto): consultar correos nuevos usando el cursor
   de `TriggerState`.
 
 ## Fase 7 — Robustez del procesamiento
