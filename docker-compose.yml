@@ -110,6 +110,12 @@ services:
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY}
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-5}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      # El worker renueva los tokens de Google vencidos antes de usarlos, y
+      # para eso necesita las credenciales del cliente OAuth. Sin ellas, toda
+      # acción de Gmail falla una hora después de conectar la cuenta.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
     depends_on:
       postgres:
         condition: service_healthy

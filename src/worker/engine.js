@@ -2,6 +2,7 @@
 // de una automatización. Lo invoca el worker por cada trabajo de la cola.
 const { prisma: defaultPrisma } = require("../shared/prisma");
 const { decryptToken } = require("../shared/tokenCrypto");
+const { getValidAccessToken } = require("../shared/oauthTokens");
 const { getAdapter } = require("./adapters");
 const { pollGmailAutomation } = require("./gmailPoller");
 
@@ -173,9 +174,16 @@ async function runAutomation(job, options = {}) {
         },
       });
 
+      // Se pide un token vigente en lugar de usar el guardado: los de Google
+      // caducan a la hora, y sin renovarlos toda acción de Gmail falla con 401.
+      // getValidAccessToken lo renueva y lo guarda cuando hace falta.
+      const accessToken = connection?.accessToken
+        ? connection.accessToken
+        : await getValidAccessToken(connection);
+
       const adapterConnection = {
         ...connection,
-        accessToken: connection?.accessToken || (connection?.accessTokenEncrypted ? decryptToken(connection.accessTokenEncrypted) : undefined),
+        accessToken,
         refreshToken: connection?.refreshToken || (connection?.refreshTokenEncrypted ? decryptToken(connection.refreshTokenEncrypted) : undefined),
       };
 

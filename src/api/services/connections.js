@@ -1,5 +1,6 @@
 const { prisma } = require("../../shared/prisma");
 const { decryptToken, encryptToken } = require("../../shared/tokenCrypto");
+const { getValidAccessToken: obtenerTokenVigente } = require("../../shared/oauthTokens");
 const providers = require("./oauthProviders");
 
 const PROVIDERS = { github: "GITHUB", google: "GOOGLE" };
@@ -59,27 +60,16 @@ async function saveOAuthConnection(userId, provider, tokens, metadata) {
   });
 }
 
+// La renovación vive en shared/oauthTokens.js porque el worker también la
+// necesita. Aquí solo se resuelve la conexión del usuario y se delega, para
+// que no queden dos implementaciones que puedan desincronizarse.
 async function getValidAccessToken(userId, provider) {
   const providerName = PROVIDERS[provider];
   const connection = await prisma.connection.findUnique({
     where: { userId_provider: { userId, provider: providerName } },
   });
   if (!connection?.accessTokenEncrypted) throw new ConnectionNotFoundError();
-  const accessToken = decryptToken(connection.accessTokenEncrypted);
-  if (provider !== "google" || !connection.expiresAt || connection.expiresAt.getTime() > Date.now() + 60_000) {
-    return accessToken;
-  }
-  if (!connection.refreshTokenEncrypted) throw new providers.OAuthError("GOOGLE_REAUTHORIZATION_REQUIRED", 401);
-  const refreshed = await providers.refreshGoogleToken(decryptToken(connection.refreshTokenEncrypted));
-  await prisma.connection.update({
-    where: { id: connection.id },
-    data: {
-      accessTokenEncrypted: encryptToken(refreshed.access_token),
-      expiresAt: new Date(Date.now() + Number(refreshed.expires_in) * 1000),
-      ...(refreshed.refresh_token ? { refreshTokenEncrypted: encryptToken(refreshed.refresh_token) } : {}),
-    },
-  });
-  return refreshed.access_token;
+  return obtenerTokenVigente(connection);
 }
 
 async function remove(userId, id) {
