@@ -141,8 +141,16 @@ async function runAutomation(job, options = {}) {
       return { status: "SKIPPED", execution: execution, pollResult };
     }
 
+    // Contexto de resolución para condiciones y plantillas.
+    //
+    // El enunciado y la interfaz usan la forma {{trigger.titulo}}, pero los
+    // datos del disparador llegan planos ({ titulo, ... }). Sin el envoltorio
+    // "trigger" esas plantillas resolvían siempre a cadena vacía. Se exponen
+    // las dos formas para que funcionen {{trigger.titulo}} y {{titulo}}.
+    const contexto = { ...triggerData, trigger: triggerData };
+
     const conditions = Array.isArray(automation.conditions) ? automation.conditions : [];
-    const conditionsMet = conditions.every((condition) => evaluateCondition(condition, triggerData));
+    const conditionsMet = conditions.every((condition) => evaluateCondition(condition, contexto));
 
     if (!conditionsMet) {
       const skippedExecution = await prismaClient.execution.update({
@@ -157,7 +165,7 @@ async function runAutomation(job, options = {}) {
     }
 
     for (const action of Array.isArray(automation.actions) ? automation.actions : []) {
-      const resolvedParams = interpolateValue(action.params || {}, triggerData);
+      const resolvedParams = interpolateValue(action.params || {}, contexto);
       const connection = await prismaClient.connection.findFirst({
         where: {
           userId: automation.userId,
@@ -217,4 +225,6 @@ async function runAutomation(job, options = {}) {
   }
 }
 
-module.exports = { runAutomation };
+// evaluateCondition e interpolateValue se exportan para poder probarlas de
+// forma aislada, sin montar una ejecución completa.
+module.exports = { runAutomation, evaluateCondition, interpolateValue };
