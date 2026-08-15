@@ -41,8 +41,9 @@ async function sendMessage({ params, connection, context }) {
   // MISSING_MESSAGE. Se acepta "message" como alias por compatibilidad.
   const { chatId, parseMode = "HTML" } = params;
   const texto = params.text ?? params.message;
+  const chatIdNormalizado = typeof chatId === "string" ? chatId.trim() : chatId;
 
-  if (!chatId) {
+  if (!chatIdNormalizado) {
     throw new TelegramError("chatId es requerido", "MISSING_CHAT_ID", 400);
   }
 
@@ -56,7 +57,7 @@ async function sendMessage({ params, connection, context }) {
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: texto, parse_mode: parseMode }),
+      body: JSON.stringify({ chat_id: chatIdNormalizado, text: texto, parse_mode: parseMode }),
       timeout: 10000,
     });
 
