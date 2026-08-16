@@ -122,8 +122,8 @@ Marcar con `[x]` lo que se vaya completando.
 
 ## Fase 9 — Puntos opcionales
 
-- [ ] **61.** `POST /api/2fa/setup`: generar el secreto TOTP y devolver el QR.
-- [ ] **62.** `POST /api/2fa/verify`: validar el código y activar `totpEnabled`.
+- [x] **61.** `POST /api/2fa/setup`: generar el secreto TOTP y devolver el QR.
+- [x] **62.** `POST /api/2fa/verify`: validar el código y activar `totpEnabled`.
 - [ ] **63.** `POST /api/2fa/disable` con confirmación de contraseña.
 - [ ] **64.** Modificar el login: si `totpEnabled`, exigir el OTP antes de crear la sesión.
 - [ ] **65.** UI de activación de 2FA: mostrar QR, campo de código y estado actual.
