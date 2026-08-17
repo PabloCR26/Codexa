@@ -7,4 +7,8 @@ const verifySchema = z.object({
     .regex(/^\d{6}$/, "El código TOTP debe tener 6 dígitos"),
 });
 
-module.exports = { verifySchema };
+const disableSchema = z.object({
+  password: z.string().min(1, "La contraseña es obligatoria"),
+});
+
+module.exports = { verifySchema, disableSchema };

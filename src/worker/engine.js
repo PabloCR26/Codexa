@@ -48,6 +48,13 @@ function interpolateValue(value, triggerData) {
 function evaluateCondition(condition, triggerData) {
   if (!condition || typeof condition !== "object") return true;
 
+  if (condition.type === "group" || Array.isArray(condition.conditions)) {
+    const nested = Array.isArray(condition.conditions) ? condition.conditions : [];
+    if (nested.length === 0) return true;
+    const results = nested.map((item) => evaluateCondition(item, triggerData));
+    return condition.operator === "OR" ? results.some(Boolean) : results.every(Boolean);
+  }
+
   const actualValue = getValueAtPath(triggerData, condition.field);
   const expectedValue = condition.value;
 

@@ -1,3 +1,4 @@
+const bcrypt = require("bcryptjs");
 const QRCode = require("qrcode");
 const speakeasy = require("speakeasy");
 const { prisma } = require("../../shared/prisma");
@@ -17,7 +18,12 @@ class TwoFactorError extends Error {
   }
 }
 
-function createTwoFactorService({ prismaClient = prisma, totpLibrary = speakeasy, qrCodeLibrary = QRCode } = {}) {
+function createTwoFactorService({
+  prismaClient = prisma,
+  passwordLibrary = bcrypt,
+  totpLibrary = speakeasy,
+  qrCodeLibrary = QRCode,
+} = {}) {
   async function setup(userId) {
     const user = await prismaClient.user.findUnique({
       where: { id: userId },
@@ -86,7 +92,36 @@ function createTwoFactorService({ prismaClient = prisma, totpLibrary = speakeasy
     });
   }
 
-  return { setup, verify };
+  async function disable(userId, password) {
+    const user = await prismaClient.user.findUnique({
+      where: { id: userId },
+      select: { id: true, passwordHash: true, totpEnabled: true, totpSecret: true },
+    });
+
+    if (!user) {
+      throw new TwoFactorError("USER_NOT_FOUND", 404);
+    }
+
+    if (!user.passwordHash) {
+      throw new TwoFactorError("PASSWORD_NOT_SET", 400);
+    }
+
+    const valid = await passwordLibrary.compare(password, user.passwordHash);
+    if (!valid) {
+      throw new TwoFactorError("INVALID_PASSWORD", 401);
+    }
+
+    return prismaClient.user.update({
+      where: { id: userId },
+      data: {
+        totpEnabled: false,
+        totpSecret: null,
+      },
+      select: PUBLIC_FIELDS,
+    });
+  }
+
+  return { setup, verify, disable };
 }
 
 const twoFactorService = createTwoFactorService();

@@ -24,20 +24,27 @@ export default function Login() {
   const location = useLocation()
   const queryClient = useQueryClient()
   const { autenticado, verificando } = useSession()
-  const [campos, setCampos] = useState({ email: '', password: '' })
+  const [campos, setCampos] = useState({ email: '', password: '', code: '' })
   const [errores, setErrores] = useState({})
+  const [requiereTotp, setRequiereTotp] = useState(false)
 
   // RequireAuth guarda aquí la ruta que se intentó abrir sin sesión, para
   // volver a ella una vez iniciada.
   const destino = location.state?.from || '/'
 
   const acceso = useMutation({
-    mutationFn: ({ email, password }) => api.login(email, password),
+    mutationFn: ({ email, password, code }) => api.login(email, password, code),
     onSuccess: (usuario) => {
+      setRequiereTotp(false)
       // Se guarda la sesión en caché para que el resto de la aplicación la
       // conozca de inmediato, sin una petición adicional.
       queryClient.setQueryData(SESSION_KEY, usuario)
       navigate(destino, { replace: true })
+    },
+    onError: (error) => {
+      if (error.code === 'TOTP_REQUIRED' || error.code === 'INVALID_TOTP_CODE') {
+        setRequiereTotp(true)
+      }
     },
   })
 
@@ -60,11 +67,19 @@ export default function Login() {
     const encontrados = validar(campos)
     setErrores(encontrados)
     if (Object.keys(encontrados).length > 0) return
-    acceso.mutate(campos)
+    acceso.mutate({
+      email: campos.email,
+      password: campos.password,
+      code: requiereTotp ? campos.code : undefined,
+    })
   }
 
   const errorGeneral = acceso.isError
-    ? MENSAJES[acceso.error.code] || 'No se pudo iniciar sesión. Intentá de nuevo.'
+    ? MENSAJES[acceso.error.code] || (acceso.error.code === 'TOTP_REQUIRED'
+      ? 'Ingresá el código del autenticador para continuar.'
+      : acceso.error.code === 'INVALID_TOTP_CODE'
+        ? 'El código del autenticador es incorrecto.'
+        : 'No se pudo iniciar sesión. Intentá de nuevo.')
     : null
 
   return (
@@ -77,6 +92,12 @@ export default function Login() {
           <p className="alerta" role="alert">
             {errorGeneral}
           </p>
+        )}
+
+        {requiereTotp && (
+          <div className="notice success">
+            Tu cuenta usa autenticación de dos pasos. Ingresá el código del app autenticadora.
+          </div>
         )}
 
         <label htmlFor="email">Correo electrónico</label>
@@ -113,8 +134,25 @@ export default function Login() {
           </span>
         )}
 
+        {requiereTotp && (
+          <>
+            <label htmlFor="code">Código TOTP</label>
+            <input
+              id="code"
+              name="code"
+              inputMode="numeric"
+              maxLength={6}
+              pattern="[0-9]{6}"
+              autoComplete="one-time-code"
+              value={campos.code}
+              onChange={(e) => actualizar('code', e.target.value.replace(/\D/g, '').slice(0, 6))}
+              aria-invalid={Boolean(errores.code)}
+            />
+          </>
+        )}
+
         <button type="submit" disabled={acceso.isPending}>
-          {acceso.isPending ? 'Ingresando…' : 'Ingresar'}
+          {acceso.isPending ? 'Ingresando…' : requiereTotp ? 'Confirmar código' : 'Ingresar'}
         </button>
       </form>
 

@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const speakeasy = require("speakeasy");
 const { prisma } = require("../../shared/prisma");
 
 // Costo del hash. 12 es un equilibrio razonable entre seguridad y tiempo
@@ -22,7 +23,7 @@ class AuthError extends Error {
   }
 }
 
-function createAuthService({ prismaClient = prisma, passwordLibrary = bcrypt } = {}) {
+function createAuthService({ prismaClient = prisma, passwordLibrary = bcrypt, totpLibrary = speakeasy } = {}) {
   async function register({ email, password }) {
     const existente = await prismaClient.user.findUnique({ where: { email } });
     if (existente) {
@@ -46,8 +47,18 @@ function createAuthService({ prismaClient = prisma, passwordLibrary = bcrypt } =
     }
   }
 
-  async function login({ email, password }) {
-    const user = await prismaClient.user.findUnique({ where: { email } });
+  async function login({ email, password, code }) {
+    const user = await prismaClient.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        totpEnabled: true,
+        totpSecret: true,
+        createdAt: true,
+      },
+    });
 
     // Se compara aunque el usuario no exista para que el tiempo de respuesta
     // sea parecido en ambos casos y no revele qué correos están registrados.
@@ -60,8 +71,22 @@ function createAuthService({ prismaClient = prisma, passwordLibrary = bcrypt } =
       throw new AuthError("INVALID_CREDENTIALS", 401);
     }
 
-    // TODO (tarea 64): si user.totpEnabled, exigir el código OTP antes
-    // de considerar el inicio de sesión completo.
+    if (user.totpEnabled) {
+      if (!user.totpSecret || !code) {
+        throw new AuthError("TOTP_REQUIRED", 401);
+      }
+
+      const valid = totpLibrary.totp.verify({
+        secret: user.totpSecret,
+        encoding: "base32",
+        token: code,
+        window: 1,
+      });
+
+      if (!valid) {
+        throw new AuthError("INVALID_TOTP_CODE", 401);
+      }
+    }
 
     return {
       id: user.id,

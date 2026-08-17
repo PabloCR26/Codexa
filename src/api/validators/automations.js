@@ -4,13 +4,23 @@ const { z } = require("zod");
 const TRIGGER_TYPES = ["GITHUB_WEBHOOK", "GMAIL_POLL", "CRON"];
 const PROVIDERS = ["GOOGLE", "GITHUB", "TELEGRAM"];
 const OPERADORES = ["eq", "neq", "contains", "gt", "lt"];
+const LOGICAL_OPERATORS = ["AND", "OR"];
 
-// Una condición compara un campo del disparador contra un valor.
-const conditionSchema = z.object({
+const simpleConditionSchema = z.object({
   field: z.string().min(1),
   operator: z.enum(OPERADORES),
   value: z.string(),
 });
+
+const groupConditionSchema = z.object({
+  type: z.literal("group"),
+  operator: z.enum(LOGICAL_OPERATORS),
+  conditions: z.array(z.lazy(() => conditionSchema)).min(1),
+});
+
+// Una condición compara un campo del disparador contra un valor o agrupa
+// otras condiciones con AND/OR para filtros avanzados.
+const conditionSchema = z.union([simpleConditionSchema, groupConditionSchema]);
 
 // Una acción se ejecuta contra un proveedor. Sus parámetros admiten
 // plantillas {{trigger.campo}} que resuelve el worker.

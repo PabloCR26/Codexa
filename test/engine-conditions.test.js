@@ -112,3 +112,29 @@ test("todas las condiciones deben cumplirse para continuar", async () => {
 
   assert.equal(resultado.status, "SKIPPED");
 });
+
+test("las condiciones con operadores lógicos combinan AND y OR entre reglas", () => {
+  const contextoConcreto = { ...datos, trigger: datos, estado: "open" };
+  assert.equal(
+    evaluateCondition({
+      type: "group",
+      operator: "OR",
+      conditions: [
+        { field: "action", operator: "eq", value: "closed" },
+        { field: "estado", operator: "eq", value: "open" },
+      ],
+    }, contextoConcreto),
+    true,
+  );
+  assert.equal(
+    evaluateCondition({
+      type: "group",
+      operator: "AND",
+      conditions: [
+        { field: "action", operator: "eq", value: "opened" },
+        { field: "estado", operator: "eq", value: "open" },
+      ],
+    }, contextoConcreto),
+    true,
+  );
+});

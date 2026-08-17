@@ -83,3 +83,37 @@ test("convierte una colisión concurrente de correo en el mismo error 409", asyn
     (error) => error.code === "EMAIL_ALREADY_REGISTERED" && error.status === 409,
   );
 });
+
+test("requiere un código TOTP válido antes de completar el login si el usuario tiene 2FA activado", async () => {
+  const passwordHash = await bcrypt.hash("clave-segura-123", 12);
+  const prismaClient = {
+    user: {
+      findUnique: async ({ where }) => {
+        if (where.email !== "persona@example.com") return null;
+        return {
+          id: "user-1",
+          email: "persona@example.com",
+          passwordHash,
+          totpEnabled: true,
+          totpSecret: "JBSWY3DPEHPK3PXP",
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        };
+      },
+    },
+  };
+  const service = createAuthService({
+    prismaClient,
+    passwordLibrary: bcrypt,
+    totpLibrary: { totp: { verify: () => false } },
+  });
+
+  await assert.rejects(
+    service.login({ email: "persona@example.com", password: "clave-segura-123" }),
+    (error) => error instanceof AuthError && error.code === "TOTP_REQUIRED" && error.status === 401,
+  );
+
+  await assert.rejects(
+    service.login({ email: "persona@example.com", password: "clave-segura-123", code: "000000" }),
+    (error) => error instanceof AuthError && error.code === "INVALID_TOTP_CODE" && error.status === 401,
+  );
+});
