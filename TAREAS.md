@@ -131,9 +131,9 @@ Marcar con `[x]` lo que se vaya completando.
 
 ## Fase 10 — Cierre y defensa
 
-- [ ] **67.** Completar el README: instalación, configuración de Client ID/Secret,
+- [x] **67.** Completar el README: instalación, configuración de Client ID/Secret,
   levantamiento del broker y ejecución de la app web y del worker.
-- [ ] **68.** Diagrama de arquitectura para el README y la defensa.
+- [x] **68.** Diagrama de arquitectura para el README y la defensa.
 - [ ] **69.** Revisar que **ningún secreto** quedó versionado en el historial de Git.
 - [ ] **70.** Verificar que los tres integrantes tienen commits sustantivos.
 - [ ] **71.** Preparar las tres demos clave: **idempotencia**, **backoff** y **DLQ**.

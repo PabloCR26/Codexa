@@ -28,21 +28,29 @@ Principio central: **la API no ejecuta acciones externas dentro de una petición
 Valida la solicitud, persiste el estado necesario, publica un trabajo en Redis y responde.
 El worker, como proceso separado, consume ese trabajo después.
 
-```text
-web/ (React)
-    │ REST + cookie de sesión
-    ▼
-src/api/ (productor) ◄── webhooks GitHub / configuración del usuario
-    │ publica trabajos
-    ▼
-Redis + BullMQ ──► cola executions / executions-dlq
-    │ consume trabajos
-    ▼
-src/worker/ (consumidor) ──► Gmail / GitHub / Telegram
-    │
-    ▼
-PostgreSQL ◄──── src/api/
+```mermaid
+flowchart LR
+    User([Usuario]) --> Web[SPA React + Vite]
+
+    subgraph App[FlowHub]
+        Web -->|REST /api + cookie HTTP-only| API[API Express<br/>productor]
+        API -->|sesiones y trabajos| Redis[(Redis + BullMQ)]
+        API -->|datos de negocio| DB[(PostgreSQL + Prisma)]
+        Redis -->|cola executions| Worker[Worker BullMQ<br/>consumidor]
+        Worker -->|estado y bitácora| DB
+        Worker -->|fallos agotados o permanentes| DLQ[Cola executions-dlq]
+        Scheduler[Scheduler cron] -->|trabajos programados| Redis
+    end
+
+    GitHub[GitHub] -->|OAuth y webhooks HMAC| API
+    Google[Google] -->|OAuth| API
+    Worker -->|acciones externas| GitHub
+    Worker -->|Gmail API| Google
+    Worker -->|Bot API| Telegram[Telegram]
 ```
+
+El diagrama está escrito con [Mermaid](https://github.com/mermaid-js/mermaid), por lo que
+GitHub lo renderiza directamente y sus cambios pueden revisarse como texto en cada commit.
 
 ### Contratos internos
 
@@ -56,22 +64,23 @@ Un cambio en el payload de la cola afecta a la API y al worker: debe documentars
 
 ## Alcance actual
 
-Esta base deja preparado:
+La solución implementa actualmente:
 
 - Express con seguridad básica, CORS, sesiones y manejo central de errores.
 - Endpoint de salud `GET /api/health`.
-- Routers implementados para `auth`, `automations`, `oauth` y `connections`; rutas reservadas
-  para `webhooks`, `executions` y `2fa`.
+- Registro, sesiones, OAuth, conexiones, CRUD de automatizaciones, webhooks y consulta de
+  ejecuciones bajo `/api`.
 - Publicador BullMQ para la cola `executions`, con reintentos y backoff predeterminados.
-- Worker consumidor con derivación a la cola de fallidos (`executions-dlq`).
-- Frontend React + Vite con autenticación, conexiones OAuth y CRUD de automatizaciones.
+- Worker consumidor con idempotencia, condiciones, interpolación, reintentos, scheduler,
+  adaptadores de proveedores y derivación a la cola de fallidos (`executions-dlq`).
+- Frontend React + Vite con autenticación, conexiones OAuth, CRUD de automatizaciones y
+  bitácora de ejecuciones.
 - PostgreSQL 16 y Redis 7 para desarrollo con Docker Compose.
 - Esquema y migración inicial de Prisma.
 - Proveedores `GOOGLE`, `GITHUB` y `TELEGRAM`.
 - Modelo `TriggerState` para conservar el cursor del polling de Gmail.
 
-Las rutas que todavía están reservadas responden `501 NOT_IMPLEMENTED` y el motor de ejecución
-del worker lanza un error explícito hasta que el equipo implemente cada fase.
+El polling de Gmail continúa pendiente; no debe presentarse como funcional durante la defensa.
 
 ## Estructura del repositorio
 
@@ -104,6 +113,10 @@ del worker lanza un error explícito hasta que el equipo implemente cada fase.
 ```
 
 ## Instalación local
+
+Esta modalidad ejecuta PostgreSQL y el broker Redis en Docker, mientras la API, el worker y
+la web se ejecutan con Node.js. Para levantar todo con Docker, seguir
+[Ejecución completa en contenedores](#ejecución-completa-en-contenedores).
 
 ### Requisitos
 
@@ -170,6 +183,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
 
 Copiar esos resultados en `TOKEN_ENCRYPTION_KEY` y `SESSION_SECRET` dentro de `.env`.
 Las credenciales OAuth pueden permanecer vacías si todavía no se probarán las conexiones.
+Cada integrante debe crear sus propias credenciales; nunca se comparte ni versiona el archivo
+`.env`. La guía detallada está en [oauth_tutorial.md](oauth_tutorial.md).
 
 ### Configurar OAuth de GitHub
 
@@ -200,14 +215,18 @@ continúa escuchando en `5432`; no hay que cambiar esa parte.
 
 ### 4. Levantar PostgreSQL y Redis
 
+Redis es el **broker** compartido: la API publica trabajos BullMQ en `executions`, el worker
+los consume y los fallos definitivos se registran en `executions-dlq`.
+
 ```bash
 docker compose up -d --wait
 docker compose ps
 docker compose port postgres 5432
+docker compose port redis 6379
 ```
 
-Ambos servicios deben aparecer como `healthy`. El último comando debe mostrar que PostgreSQL
-está publicado en el puerto `5433`, por ejemplo `0.0.0.0:5433`.
+Ambos servicios deben aparecer como `healthy`. El comando de PostgreSQL debe mostrar el puerto
+`5433`, por ejemplo `0.0.0.0:5433`; Redis usa `6379` de forma predeterminada.
 
 ### 5. Aplicar la base de datos
 
@@ -266,7 +285,8 @@ Además del modo de desarrollo, toda la solución puede levantarse en Docker med
 perfil `app`:
 
 ```bash
-docker compose --profile app up -d --build
+docker compose --profile app up -d --build --wait
+docker compose --profile app ps
 ```
 
 Esto construye y arranca cinco contenedores: `postgres`, `redis`, `api`, `worker` y `web`
@@ -347,6 +367,23 @@ El frontend tiene su propia plantilla en `web/.env.example` con `VITE_API_URL`.
 | `npm run prisma:migrate -- --name descripcion` | Crear una migración |
 | `npm run prisma:deploy` | Aplicar migraciones versionadas |
 | `npm run prisma:studio` | Explorar la base de datos |
+| `npm run oauth:verify-storage` | Verificar que los tokens OAuth estén cifrados en reposo |
+| `npm run enqueue:test-job` | Publicar un trabajo de prueba en el broker |
+| `npm run verify:worker-flow` | Verificar el flujo API → cola → worker |
+| `npm run security:audit-history` | Buscar firmas de secretos en todo el historial Git sin mostrar sus valores |
+
+## Auditoría de secretos
+
+Ejecutar antes de entregar o crear el PR final:
+
+```bash
+npm run security:audit-history
+```
+
+El comando revisa todas las referencias y commits, no solo el árbol actual. Por diseño imprime
+únicamente el tipo de hallazgo y su ubicación `commit:archivo`; nunca imprime el secreto.
+El resultado y cualquier remediación pendiente se documentan en
+[SECURITY_AUDIT.md](SECURITY_AUDIT.md).
 
 ## Webhooks durante el desarrollo
 
