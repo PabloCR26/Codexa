@@ -87,3 +87,19 @@ test("rechaza un código TOTP inválido con estado 400", async () => {
     (error) => error instanceof TwoFactorError && error.code === "INVALID_TOTP_CODE" && error.status === 400,
   );
 });
+
+test("desactiva 2FA cuando la contraseña confirma la identidad del usuario", async () => {
+  const passwordHash = await require("bcryptjs").hash("clave-segura-123", 12);
+  const database = createFakePrisma({ id: "user-1", email: "persona@example.com", totpSecret: "JBSWY3DPEHPK3PXP", passwordHash });
+  const service = createTwoFactorService({
+    prismaClient: database.client,
+    totpLibrary: { generateSecret: () => ({ base32: "", otpauth_url: "" }), totp: { verify: () => true } },
+    qrCodeLibrary: { toDataURL: async () => "" },
+  });
+
+  const user = await service.disable("user-1", "clave-segura-123");
+
+  assert.equal(user.totpEnabled, false);
+  assert.equal(database.state.updates[0].data.totpEnabled, false);
+  assert.equal(database.state.updates[0].data.totpSecret, null);
+});

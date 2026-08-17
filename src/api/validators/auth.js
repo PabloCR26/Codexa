@@ -17,6 +17,10 @@ const registerSchema = z.object({ email, password });
 
 // En el inicio de sesión no se valida el largo: una contraseña vieja o
 // incorrecta debe fallar por credenciales, no por formato.
-const loginSchema = z.object({ email, password: z.string().min(1) });
+const loginSchema = z.object({
+  email,
+  password: z.string().min(1),
+  code: z.string().trim().regex(/^\d{6}$/, "El código TOTP debe tener 6 dígitos").optional().or(z.literal("")),
+});
 
 module.exports = { registerSchema, loginSchema };

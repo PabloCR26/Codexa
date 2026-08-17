@@ -66,8 +66,8 @@ export const api = {
 
   // Sesión
   me: () => request('/auth/me'),
-  login: (email, password) =>
-    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  login: (email, password, code) =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, code }) }),
   register: (email, password) =>
     request('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request('/auth/logout', { method: 'POST' }),

@@ -55,7 +55,7 @@ router.post(
     try {
       user = await authService.login(parsed.data);
     } catch (error) {
-      if (error.code === "INVALID_CREDENTIALS") {
+      if (["INVALID_CREDENTIALS", "TOTP_REQUIRED", "INVALID_TOTP_CODE"].includes(error.code)) {
         await recordLoginFailure(request);
       }
       throw error;
